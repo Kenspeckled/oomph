@@ -1,0 +1,29 @@
+{
+  "name": "rook",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Redis backed Object Oriented javascript application Kit",
+  "main": "gulpfile.js",
+  "scripts": {
+    "test": "jasmine"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:Kenspeckled/rook.git"
+  },
+  "keywords": [
+    "Redis",
+    "Object",
+    "Oriented",
+    "Framework"
+  ],
+  "author": "@bejaminjosephw",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Kenspeckled/rook/issues"
+  },
+  "homepage": "https://github.com/Kenspeckled/rook",
+  "devDependencies": {
+    "jasmine": "^2.3.1"
+  }
+}
