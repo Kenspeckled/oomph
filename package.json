@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "description": "Redis backed Object Oriented javascript application Kit",
-  "main": "gulpfile.js",
+  "main": "index.js",
   "scripts": {
     "test": "jasmine"
   },

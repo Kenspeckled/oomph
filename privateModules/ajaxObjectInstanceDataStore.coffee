@@ -1,0 +1,2 @@
+ajaxObjectInstanceDataStore = {}
+module.exports = ajaxObjectInstanceDataStore

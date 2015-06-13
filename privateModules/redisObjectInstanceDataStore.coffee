@@ -1,0 +1,2 @@
+redisObjectInstanceDataStore = {}
+module.exports = redisObjectInstanceDataStore
