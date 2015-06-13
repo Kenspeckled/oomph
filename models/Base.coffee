@@ -1,5 +1,5 @@
-publishSubscribe = require '../publicModules/publishSubscribe.coffee'
 _ = require 'lodash'
+publishSubscribe = require '../publicModules/publishSubscribe.coffee'
 
 class Base
   constructor: (initialisedProps) ->
