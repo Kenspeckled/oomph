@@ -28,7 +28,7 @@ AJAXClassMethods =
 
   moduleName: "AJAXClassMethods"
 
-  ajax:
+  ajax: ->
     get: (path, args) ->
       httpRequest 'GET',  path, args, true
     post: (path, args) ->
@@ -51,7 +51,7 @@ AJAXClassMethods =
     @ajax.get '/api/' + @name.toLowerCase + '/index', opts
 
   create: (opts) ->
-    @ajax.post'/api/' + @name.toLowerCase + '/new', opts
+    @ajax.post '/api/' + @name.toLowerCase + '/new', opts
 
   update: (id, opts) ->
     @ajax.put '/api/' + @name.toLowerCase + '/'+ id + '/edit', opts
