@@ -1,6 +1,6 @@
-Base = require './Base.coffee'
-ajaxObjectInstanceDataStore = require '../privateModules/ajaxObjectInstanceDataStore.coffee'
-ajaxObjectClassDataStore = require '../privateModules/ajaxObjectClassDataStore.coffee'
+Base = require './Base'
+ajaxObjectInstanceDataStore = require '../privateModules/ajaxObjectInstanceDataStore'
+ajaxObjectClassDataStore = require '../privateModules/ajaxObjectClassDataStore'
 class ClientObject extends Base
   @include ajaxObjectInstanceDataStore
   @extend ajaxObjectClassDataStore

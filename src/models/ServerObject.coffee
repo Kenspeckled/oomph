@@ -1,6 +1,6 @@
-Base = require './Base.coffee'
-redisObjectInstanceDataStore = require '../privateModules/redisObjectInstanceDataStore.coffee'
-redisObjectClassDataStore = require '../privateModules/redisObjectClassDataStore.coffee'
+Base = require './Base'
+redisObjectInstanceDataStore = require '../privateModules/redisObjectInstanceDataStore'
+redisObjectClassDataStore = require '../privateModules/redisObjectClassDataStore'
 class ServerObject extends Base
   @include redisObjectInstanceDataStore
   @extend redisObjectClassDataStore
