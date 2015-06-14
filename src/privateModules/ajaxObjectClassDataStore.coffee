@@ -23,41 +23,37 @@ httpRequest = (method, url, args, isJson) ->
     client.onerror = ->
       reject @statusText
 
-if typeof window == 'undefined' #window is not defined on the server
-  url = ''
-else
-  url = window.location.href.replace(window.location.pathname, '').replace(window.location.search, '')
-
-ajax =
-  get: (path, args) ->
-    httpRequest 'GET',  path, args, true
-  post: (path, args) ->
-    httpRequest 'POST', path, args
-  put: (path, args) ->
-    httpRequest 'PUT',  path, args
-  delete: (path, args) ->
-    httpRequest 'DELETE', path, args
 
 AJAXClassMethods =
 
   moduleName: "AJAXClassMethods"
 
+  ajax:
+    get: (path, args) ->
+      httpRequest 'GET',  path, args, true
+    post: (path, args) ->
+      httpRequest 'POST', path, args
+    put: (path, args) ->
+      httpRequest 'PUT',  path, args
+    delete: (path, args) ->
+      httpRequest 'DELETE', path, args
+
   all: ->
-    ajax.get @indexPath
+    @ajax.get '/api/' + @name.toLowerCase + '/index' 
 
   find: (id) ->
-    ajax.get @showPath, {id: id}
+    @ajax.get '/api/' + @name.toLowerCase + '/'+id
 
   findBy: (opts) ->
-    ajax.get @showPath, opts
+    @ajax.get '/api/' + @name.toLowerCase + '/show', opts
 
   where: (opts) ->
-    ajax.get @indexPath, opts
+    @ajax.get '/api/' + @name.toLowerCase + '/index', opts
 
   create: (opts) ->
-    ajax.post @createPath, opts
+    @ajax.post'/api/' + @name.toLowerCase + '/new', opts
 
   update: (id, opts) ->
-    ajax.put @updatePath, opts
+    @ajax.put '/api/' + @name.toLowerCase + '/'+ id + '/edit', opts
 
 module.exports = AJAXClassMethods
