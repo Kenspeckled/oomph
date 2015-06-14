@@ -1,11 +1,12 @@
 {
   "name": "rook",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Redis backed Object Oriented javascript application Kit",
-  "main": "index.js",
+  "main": "./lib/index.js",
   "scripts": {
-    "test": "jasmine"
+    "test": "jasmine",
+    "prepublish": "coffee -o lib/ src/"
   },
   "repository": {
     "type": "git",
