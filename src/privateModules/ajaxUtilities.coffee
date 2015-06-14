@@ -2,7 +2,7 @@ Promise = require 'promise'
 ajaxUtilities = 
 
   httpRequest: (method, url, args, isJson) ->
-    new Promise (resolve, reject) ->
+    new Promise (resolve, reject) =>
       client = new XMLHttpRequest
       uri = url
       if method != 'POST'
@@ -16,7 +16,7 @@ ajaxUtilities =
         client.open method, url
         client.setRequestHeader("Content-type", "application/x-www-form-urlencoded")
         client.send params 
-      console.log "Ajax request " + method + " to " + uri
+      console.log "Ajax", method + " to " + uri, params
       client.onload = ->
         if @status == 200
           if isJson
