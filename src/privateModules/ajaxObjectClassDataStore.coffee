@@ -1,10 +1,11 @@
+_ = require 'lodash'
 ajaxUtilities = require './ajaxUtilities'
 
 ajaxObjectClassDataStore =
 
   moduleName: "ajaxObjectClassDataStore"
 
-  ajax: ->
+  ajax:
     get: (path, args) ->
       ajaxUtilities.httpRequest 'GET',  path, args, true
     post: (path, args) ->
@@ -15,21 +16,21 @@ ajaxObjectClassDataStore =
       ajaxUtilities.httpRequest 'DELETE', path, args
 
   all: ->
-    @ajax.get '/api/' + @name.toLowerCase + '/index' 
+    @ajax.get '/api/' + _.kebabCase(@name) + '/index' 
 
   find: (id) ->
-    @ajax.get '/api/' + @name.toLowerCase + '/'+id
+    @ajax.get '/api/' + _.kebabCase(@name) + '/'+id
 
   findBy: (opts) ->
-    @ajax.get '/api/' + @name.toLowerCase + '/show', opts
+    @ajax.get '/api/' + _.kebabCase(@name) + '/show', opts
 
   where: (opts) ->
-    @ajax.get '/api/' + @name.toLowerCase + '/index', opts
+    @ajax.get '/api/' + _.kebabCase(@name) + '/index', opts
 
   create: (opts) ->
-    @ajax.post '/api/' + @name.toLowerCase + '/new', opts
+    @ajax.post '/api/' + _.kebabCase(@name) + '/new', opts
 
   update: (id, opts) ->
-    @ajax.put '/api/' + @name.toLowerCase + '/'+ id + '/edit', opts
+    @ajax.put '/api/' + _.kebabCase(@name) + '/'+ id + '/edit', opts
 
 module.exports = ajaxObjectClassDataStore
