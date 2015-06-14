@@ -1,42 +1,18 @@
-Promise = require 'promise'
+ajaxUtilities = require './ajaxUtilities'
 
-httpRequest = (method, url, args, isJson) ->
-  new Promise (resolve, reject) ->
-    client = new XMLHttpRequest
-    uri = url
-    if args
-      uri += '?'
-      uri += _utilities.objectToQueryString args
-    console.log "Ajax request to " + uri
-    client.open method, uri
-    client.send()
+ajaxObjectClassDataStore =
 
-    client.onload = ->
-      if @status == 200
-        if isJson
-          resolve JSON.parse(@response)
-        else
-          resolve @response
-      else
-        reject @statusText
-
-    client.onerror = ->
-      reject @statusText
-
-
-AJAXClassMethods =
-
-  moduleName: "AJAXClassMethods"
+  moduleName: "ajaxObjectClassDataStore"
 
   ajax: ->
     get: (path, args) ->
-      httpRequest 'GET',  path, args, true
+      ajaxUtilities.httpRequest 'GET',  path, args, true
     post: (path, args) ->
-      httpRequest 'POST', path, args
+      ajaxUtilities.httpRequest 'POST', path, args, true
     put: (path, args) ->
-      httpRequest 'PUT',  path, args
+      ajaxUtilities.httpRequest 'PUT',  path, args
     delete: (path, args) ->
-      httpRequest 'DELETE', path, args
+      ajaxUtilities.httpRequest 'DELETE', path, args
 
   all: ->
     @ajax.get '/api/' + @name.toLowerCase + '/index' 
@@ -56,4 +32,4 @@ AJAXClassMethods =
   update: (id, opts) ->
     @ajax.put '/api/' + @name.toLowerCase + '/'+ id + '/edit', opts
 
-module.exports = AJAXClassMethods
+module.exports = ajaxObjectClassDataStore
