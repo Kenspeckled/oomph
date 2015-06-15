@@ -1,7 +1,7 @@
 {
   "name": "rook",
   "private": true,
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "Redis backed Object Oriented javascript application Kit",
   "main": "./lib/index.js",
   "scripts": {
