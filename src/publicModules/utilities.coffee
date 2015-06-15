@@ -1,3 +1,5 @@
+pluralize = require 'pluralize'
+
 Promise = require 'promise'
 
 utilities =
@@ -52,9 +54,21 @@ utilities =
       promiseReturnArray.push promise
     return Promise.all(promiseReturnArray)
 
-  toCamelCase: (str) ->
+  camelCase: (str) ->
     str.replace(/(?:^\w|[A-Z]|\b\w|_\w)/g, (letter, index) ->
       if index == 0 then letter.toLowerCase() else letter.toUpperCase()
     ).replace /\s+|_/g, ''
+
+  plural: (str) ->
+    pluralize(str)
+
+  pluralKababCase: (str) ->
+    kebabCaseStr = _.kebabCase(str)
+    match = kebabCaseStr.match /-(\w+)$/
+    if match
+      lastWord = match[1] 
+    else
+      lastWord = kebabCaseStr
+    kebabCaseStr.replace new RegExp(lastWord + '$'), pluralize(lastWord)
 
 module.exports = utilities

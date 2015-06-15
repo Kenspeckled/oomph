@@ -1,5 +1,6 @@
 _ = require 'lodash'
 ajaxUtilities = require './ajaxUtilities'
+_utilities = require '../publicModules/utilities'
 
 ajaxObjectClassDataStore =
 
@@ -15,22 +16,22 @@ ajaxObjectClassDataStore =
     delete: (path, args) ->
       ajaxUtilities.httpRequest 'DELETE', path, args
 
-  all: ->
-    @ajax.get '/api/' + _.kebabCase(@name) + '/index' 
+  findBy: (opts) ->
+    @ajax.get '/api/' + _.kebabCase(@name), opts
 
   find: (id) ->
-    @ajax.get '/api/' + _.kebabCase(@name) + '/'+id
+    @ajax.get '/api/' + _.kebabCase(@name) + '/' + id
 
-  findBy: (opts) ->
-    @ajax.get '/api/' + _.kebabCase(@name) + '/show', opts
+  all: ->
+    @ajax.get '/api/' + _utilities.pluralKababCase(@name)
 
   where: (opts) ->
-    @ajax.get '/api/' + _.kebabCase(@name) + '/index', opts
+    @ajax.get '/api/' + _utilities.pluralKababCase(@name), opts
 
   create: (opts) ->
-    @ajax.post '/api/' + _.kebabCase(@name) + '/new', opts
+    @ajax.post '/api/' + _.kebabCase(@name), opts
 
   update: (id, opts) ->
-    @ajax.put '/api/' + _.kebabCase(@name) + '/'+ id + '/edit', opts
+    @ajax.put '/api/' + _.kebabCase(@name) + '/'+ id, opts
 
 module.exports = ajaxObjectClassDataStore

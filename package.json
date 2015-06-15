@@ -18,10 +18,12 @@
     "Oriented",
     "Framework"
   ],
-  "contributors": [{
+  "contributors": [
+    {
       "name": "benjaminjosephw",
       "url": "https://github.com/benjaminjosephw"
-    }, {
+    },
+    {
       "name": "Richard Bell",
       "url": "https://github.com/richardtbell"
     }
