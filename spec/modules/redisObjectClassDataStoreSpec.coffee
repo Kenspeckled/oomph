@@ -1,12 +1,12 @@
 Redis = require 'redis'
 Promise = require 'promise'
-redisObjectClassDataStore = require '../../privateModules/redisObjectClassDataStore'
-_utilities = require '../../publicModules/utilities'
+redisObjectClassDataStore = require '../../lib/privateModules/redisObjectClassDataStore'
+_utilities = require '../../lib/publicModules/utilities'
 _ = require 'lodash'
-ValidationError = require '../../models/ValidationError'
+ValidationError = require '../../lib/models/ValidationError'
 
 describe 'redisObjectClassDataStore', ->
-  
+
   beforeAll (done) ->
     @redis = Redis.createClient(1111, 'localhost')
     @redis.on "error", ->

@@ -1,4 +1,4 @@
-ajaxObjectClassDataStore = require '../../privateModules/ajaxObjectClassDataStore'
+ajaxObjectClassDataStore = require '../../lib/privateModules/ajaxObjectClassDataStore'
 
 describe 'ajaxObjectClassDataStore', ->
   it 'should be an Object', ->

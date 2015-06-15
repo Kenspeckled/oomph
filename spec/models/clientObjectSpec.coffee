@@ -1,6 +1,6 @@
-ClientObject = require '../../models/ClientObject'
+ClientObject = require '../../lib/models/ClientObject'
 
 describe 'ClientObject', ->
   it 'should be a class', ->
-    clientObjectInstance = new ClientObject 
+    clientObjectInstance = new ClientObject
     expect(clientObjectInstance).toEqual jasmine.any(ClientObject)

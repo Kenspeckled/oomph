@@ -1,4 +1,4 @@
-redisObjectInstanceDataStore = require '../../privateModules/redisObjectInstanceDataStore'
+redisObjectInstanceDataStore = require '../../lib/privateModules/redisObjectInstanceDataStore'
 
 describe 'redisObjectInstanceDataStore', ->
   it 'should be an Object', ->
