@@ -15,7 +15,7 @@ describe 'redisObjectClassDataStore', ->
       @redis.flushdb()
       done()
     @redisObjectClassDataStore = redisObjectClassDataStore
-    @redisObjectClassDataStore.name = 'RedisObjectDataStore'
+    @redisObjectClassDataStore.name = 'RedisObjectClassDataStore'
     @redisObjectClassDataStore.prototype = null
     @redisObjectClassDataStore.redis = @redis
 
@@ -69,7 +69,7 @@ describe 'redisObjectClassDataStore', ->
 
   it 'should be a valid module', ->
     expect(@redisObjectClassDataStore).toEqual jasmine.any(Object)
-    expect(@redisObjectClassDataStore.moduleName).toEqual "redisObjectClassDataStore"
+    expect(@redisObjectClassDataStore.name).toEqual "RedisObjectClassDataStore"
 
   describe 'attributes set in #create', ->
     it 'should return a promise', ->
@@ -81,7 +81,7 @@ describe 'redisObjectClassDataStore', ->
       spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
       spyOn(multi, 'zadd')
       @redisObjectClassDataStore.create(integer: 1).then (createdObject) ->
-        expect(multi.zadd).toHaveBeenCalledWith('Test#integers', 1, createdObject.id)
+        expect(multi.zadd).toHaveBeenCalledWith('RedisObjectClassDataStore#integers', 1, createdObject.id)
         done()
 
     it 'should add to an ordered list when the modules class has attributes with the field type of "integer" and is sortable', (done) ->
@@ -94,7 +94,7 @@ describe 'redisObjectClassDataStore', ->
         test2Id = testObjectArray[1].id
         test3Id = testObjectArray[2].id
         test4Id = testObjectArray[3].id
-        @redis.zrange "Test#integers", 0, -1, (error, list) ->
+        @redis.zrange "RedisObjectClassDataStore#integers", 0, -1, (error, list) ->
           expect(list).toEqual [test2Id, test4Id, test3Id, test1Id]
           done()
 
@@ -108,7 +108,7 @@ describe 'redisObjectClassDataStore', ->
         test2Id = testObjectArray[1].id
         test3Id = testObjectArray[2].id
         test4Id = testObjectArray[3].id
-        @redis.zrange "TestOrderedSet#sortableStrings", 0, -1, (error, list) ->
+        @redis.zrange "RedisObjectClassDataStoreOrderedSet#sortableStrings", 0, -1, (error, list) ->
           expect(list).toEqual [test1Id, test3Id, test4Id, test2Id]
           done()
 
@@ -117,7 +117,7 @@ describe 'redisObjectClassDataStore', ->
       spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
       spyOn(multi, 'set')
       @redisObjectClassDataStore.create(identifier: 'identifierValue').then (createdObject) ->
-        expect(multi.set).toHaveBeenCalledWith('Test#identifier:identifierValue', createdObject.id)
+        expect(multi.set).toHaveBeenCalledWith('RedisObjectClassDataStore#identifier:identifierValue', createdObject.id)
         done()
 
     it 'should add to partial words sets when the modules class has attributes with the field type of "string" and is searchable', (done) ->
@@ -127,15 +127,15 @@ describe 'redisObjectClassDataStore', ->
         keysCalled = []
         for call in calledArgs
           keysCalled.push call[0]
-        expect(keysCalled).toContain('Test#words:searchableText:s')
-        expect(keysCalled).toContain('Test#words:searchableText:se')
-        expect(keysCalled).toContain('Test#words:searchableText:sea')
-        expect(keysCalled).toContain('Test#words:searchableText:sear')
-        expect(keysCalled).toContain('Test#words:searchableText:search')
-        expect(keysCalled).toContain('Test#words:searchableText:t')
-        expect(keysCalled).toContain('Test#words:searchableText:th')
-        expect(keysCalled).toContain('Test#words:searchableText:thi')
-        expect(keysCalled).toContain('Test#words:searchableText:this')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:s')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:se')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:sea')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:sear')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:search')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:t')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:th')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:thi')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:this')
         done()
 
 
@@ -144,7 +144,7 @@ describe 'redisObjectClassDataStore', ->
       spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
       spyOn(multi, 'zadd')
       @redisObjectClassDataStore.create(boolean: true).then (createdObject) ->
-        expect(multi.zadd).toHaveBeenCalledWith('Test#boolean:true', 1, createdObject.id)
+        expect(multi.zadd).toHaveBeenCalledWith('RedisObjectClassDataStore#boolean:true', 1, createdObject.id)
         done()
 
     it 'should add to a set when the modules class has attributes with the field type of "association" and "many" is true', (done) ->
@@ -156,7 +156,7 @@ describe 'redisObjectClassDataStore', ->
       spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
       spyOn(multi, 'sadd')
       @redisObjectClassDataStore.create(linkedModel: ['linkedModelId1', 'linkedModelId2']).then (createdObject) ->
-        expect(multi.sadd).toHaveBeenCalledWith('Test#linkedModel:'+createdObject.id, 'linkedModelId1', 'linkedModelId2')
+        expect(multi.sadd).toHaveBeenCalledWith('RedisObjectClassDataStore#linkedModel:'+createdObject.id, 'linkedModelId1', 'linkedModelId2')
         done()
 
     it 'should NOT add to a set when the modules class has attributes with the field type of "association" and "many" is NOT true', (done) ->
@@ -329,7 +329,8 @@ describe 'redisObjectClassDataStore', ->
       Promise.all([testPromise1,testPromise2,testPromise3]).done =>
         wherePromise = @redisObjectClassDataStore.where(boolean: true)
         wherePromise.done (returnValue) =>
-          expect(returnValue.length).toEqual 2
+          expect(returnValue.total).toEqual 2
+          expect(returnValue.items.length).toEqual 2
           done()
 
     it 'should be able to return a single test objects', (done) ->
@@ -339,8 +340,9 @@ describe 'redisObjectClassDataStore', ->
       Promise.all([testPromise1,testPromise2,testPromise3]).done =>
         wherePromise = @redisObjectClassDataStore.where(one: equalTo: 2)
         wherePromise.done (returnValue) =>
-          expect(returnValue.length).toEqual 1
-          expect(returnValue[0]).toEqual jasmine.objectContaining  url: 'uniqueValue1'
+          expect(returnValue.total).toEqual 1
+          expect(returnValue.items.length).toEqual 1
+          expect(returnValue.items[0]).toEqual jasmine.objectContaining  url: 'uniqueValue1'
           done()
 
     it 'should return correct test objects when multiple properties conditions are met', (done) ->
@@ -355,8 +357,9 @@ describe 'redisObjectClassDataStore', ->
             equalTo: 1
         wherePromise = @redisObjectClassDataStore.where(whereConditions)
         wherePromise.done (returnValue) =>
-          expect(returnValue.length).toEqual 1
-          expect(returnValue[0]).toEqual jasmine.objectContaining  url: 'uniqueValue1'
+          expect(returnValue.items.length).toEqual 1
+          expect(returnValue.total).toEqual 1
+          expect(returnValue.items[0]).toEqual jasmine.objectContaining  url: 'uniqueValue1'
           done()
 
     it 'should return an empty array when nothing matches the conditions', (done) ->
@@ -373,7 +376,8 @@ describe 'redisObjectClassDataStore', ->
             equalTo: 4
         wherePromise = @redisObjectClassDataStore.where(whereConditions)
         wherePromise.done (returnValue) =>
-          expect(returnValue).toEqual []
+          expect(returnValue.total).toEqual 0
+          expect(returnValue.items).toEqual []
           done()
 
     it "should resolve to an array of valid instances of the module's class", (done) ->
@@ -383,9 +387,10 @@ describe 'redisObjectClassDataStore', ->
       Promise.all([testPromise1,testPromise2,testPromise3]).then (createdObjectArray) =>
         wherePromise = @redisObjectClassDataStore.where(one: 1)
         wherePromise.done (returnValue) =>
-          expect(returnValue).toContain createdObjectArray[0]
-          expect(returnValue).toContain createdObjectArray[1]
-          expect(returnValue.length).toEqual 2
+          expect(returnValue.items).toContain createdObjectArray[0]
+          expect(returnValue.items).toContain createdObjectArray[1]
+          expect(returnValue.items.length).toEqual 2
+          expect(returnValue.total).toEqual 2
           done()
 
     it 'should return an array of objects sorted consistently (by id)', (done) ->
@@ -396,7 +401,8 @@ describe 'redisObjectClassDataStore', ->
         @redisObjectClassDataStore.where(integer: equalTo: 1).done (firstResultArray) =>
           @redisObjectClassDataStore.where(integer: equalTo: 1).done (secondResultArray) =>
             expect(secondResultArray).toEqual firstResultArray
-            expect(secondResultArray.length).toEqual 3
+            expect(secondResultArray.items.length).toEqual 3
+            expect(secondResultArray.total).toEqual 3
             done()
 
     it "should default to sorting by created at time (alphabetically by id)", (done) ->
@@ -413,7 +419,7 @@ describe 'redisObjectClassDataStore', ->
       #  @redisObjectClassDataStore.where(integer: equalTo: 1).done (returnArray) ->
       #    returnedIds = if returnArray then _.map(returnArray.ids, (x) -> x.id ) else []
       #    sortedReturnedIds = returnedIds.sort (a,b) -> a > b
-      #    expect(returnArray.length).toEqual 5
+      #    expect(returnArray.items.length).toEqual 5
       #    expect(returnedIds).toEqual sortedReturnedIds
       #    done()
 
@@ -435,8 +441,9 @@ describe 'redisObjectClassDataStore', ->
               greaterThan: 10
           wherePromise = @redisObjectClassDataStore.where(whereConditions)
           wherePromise.done (returnValue) =>
-            expect(returnValue.length).toEqual 1
-            expect(returnValue[0]).toEqual @testObject3
+            expect(returnValue.items.length).toEqual 1
+            expect(returnValue.total).toEqual 1
+            expect(returnValue.items[0]).toEqual @testObject3
             done()
 
         it 'should return an array of objects that have an integer greater than or equal to', (done) ->
@@ -445,9 +452,10 @@ describe 'redisObjectClassDataStore', ->
               greaterThanOrEqualTo: 10
           wherePromise = @redisObjectClassDataStore.where(whereConditions)
           wherePromise.done (returnValue) =>
-            expect(returnValue.length).toEqual 2
-            expect(returnValue).toContain @testObject3
-            expect(returnValue).toContain @testObject2
+            expect(returnValue.total).toEqual 2
+            expect(returnValue.items.length).toEqual 2
+            expect(returnValue.items).toContain @testObject3
+            expect(returnValue.items).toContain @testObject2
             done()
 
         it 'should return an array of objects that have an integer less than', (done) ->
@@ -456,8 +464,9 @@ describe 'redisObjectClassDataStore', ->
               lessThan: 10
           wherePromise = @redisObjectClassDataStore.where(whereConditions)
           wherePromise.done (returnValue) =>
-            expect(returnValue.length).toEqual 1
-            expect(returnValue[0]).toEqual @testObject1
+            expect(returnValue.items.length).toEqual 1
+            expect(returnValue.total).toEqual 1
+            expect(returnValue.items[0]).toEqual @testObject1
             done()
 
         it 'should return an array of objects that have an integer less than or equal to', (done) ->
@@ -466,9 +475,10 @@ describe 'redisObjectClassDataStore', ->
               lessThanOrEqualTo: 10
           wherePromise = @redisObjectClassDataStore.where(whereConditions)
           wherePromise.done (returnValue) =>
-            expect(returnValue.length).toEqual 2
-            expect(returnValue).toContain @testObject1
-            expect(returnValue).toContain @testObject2
+            expect(returnValue.items.length).toEqual 2
+            expect(returnValue.total).toEqual 2
+            expect(returnValue.items).toContain @testObject1
+            expect(returnValue.items).toContain @testObject2
             done()
 
         it 'should return an array of objects that have an integer equal to', (done) ->
@@ -477,8 +487,9 @@ describe 'redisObjectClassDataStore', ->
               equalTo: 10
           wherePromise = @redisObjectClassDataStore.where(whereConditions)
           wherePromise.done (returnValue) =>
-            expect(returnValue.length).toEqual 1
-            expect(returnValue[0]).toEqual @testObject2
+            expect(returnValue.items.length).toEqual 1
+            expect(returnValue.total).toEqual 1
+            expect(returnValue.items[0]).toEqual @testObject2
             done()
 
       describe 'keywords', ->
@@ -499,9 +510,10 @@ describe 'redisObjectClassDataStore', ->
               in: 'searchableText'
           wherePromise = @redisObjectClassDataStore.where(whereConditions)
           wherePromise.done (returnValue) =>
-            expect(returnValue.length).toEqual 2
-            expect(returnValue).toContain @testObject2
-            expect(returnValue).toContain @testObject3
+            expect(returnValue.items.length).toEqual 2
+            expect(returnValue.total).toEqual 2
+            expect(returnValue.items).toContain @testObject2
+            expect(returnValue.items).toContain @testObject3
             done()
 
         it 'should ignore empty spaces and punctuation characters', ->
@@ -514,9 +526,10 @@ describe 'redisObjectClassDataStore', ->
               in: 'searchableText'
           wherePromise = @redisObjectClassDataStore.where(whereConditions)
           wherePromise.done (returnValue) =>
-            expect(returnValue.length).toEqual 2
-            expect(returnValue).toContain @testObject1
-            expect(returnValue).toContain @testObject3
+            expect(returnValue.items.length).toEqual 2
+            expect(returnValue.total).toEqual 2
+            expect(returnValue.items).toContain @testObject1
+            expect(returnValue.items).toContain @testObject3
             done()
 
         it 'should return an array of objects that includes multiple keywords in any order', (done) ->
@@ -526,9 +539,10 @@ describe 'redisObjectClassDataStore', ->
               in: 'searchableText'
           wherePromise = @redisObjectClassDataStore.where(whereConditions)
           wherePromise.done (returnValue) =>
-            expect(returnValue.length).toEqual 2
-            expect(returnValue).toContain @testObject2
-            expect(returnValue).toContain @testObject3
+            expect(returnValue.items.length).toEqual 2
+            expect(returnValue.total).toEqual 2
+            expect(returnValue.items).toContain @testObject2
+            expect(returnValue.items).toContain @testObject3
             done()
 
         describe 'inAllOf', ->
@@ -539,8 +553,9 @@ describe 'redisObjectClassDataStore', ->
                 inAllOf: ['searchableText', 'searchableString']
             wherePromise = @redisObjectClassDataStore.where(whereConditions)
             wherePromise.done (returnValue) =>
-              expect(returnValue.length).toEqual 1
-              expect(returnValue).toContain @testObject3
+              expect(returnValue.items.length).toEqual 1
+              expect(returnValue.total).toEqual 1
+              expect(returnValue.items).toContain @testObject3
               done()
 
           it 'should return an array of objects that includes multiple keywords in all different attributes', (done) ->
@@ -550,8 +565,9 @@ describe 'redisObjectClassDataStore', ->
                 inAllOf: ['searchableText', 'searchableString']
             wherePromise = @redisObjectClassDataStore.where(whereConditions)
             wherePromise.done (returnValue) =>
-              expect(returnValue.length).toEqual 1
-              expect(returnValue).toContain @testObject3
+              expect(returnValue.items.length).toEqual 1
+              expect(returnValue.total).toEqual 1
+              expect(returnValue.items).toContain @testObject3
               done()
 
           it 'should return an array of objects that includes multiple keywords in all different attributes', (done) ->
@@ -561,7 +577,7 @@ describe 'redisObjectClassDataStore', ->
                 inAllOf: ['searchableText', 'searchableString']
             wherePromise = @redisObjectClassDataStore.where(whereConditions)
             wherePromise.done (returnValue) =>
-              expect(returnValue.length).toEqual 0
+              expect(returnValue.items.length).toEqual 0
               done()
 
         describe 'inAnyOf', ->
@@ -572,9 +588,10 @@ describe 'redisObjectClassDataStore', ->
                 inAnyOf: ['searchableText', 'searchableString']
             wherePromise = @redisObjectClassDataStore.where(whereConditions)
             wherePromise.done (returnValue) =>
-              expect(returnValue.length).toEqual 2
-              expect(returnValue).toContain @testObject1
-              expect(returnValue).toContain @testObject3
+              expect(returnValue.items.length).toEqual 2
+              expect(returnValue.total).toEqual 2
+              expect(returnValue.items).toContain @testObject1
+              expect(returnValue.items).toContain @testObject3
               done()
 
           it 'should return an array of objects that includes keywords in any different attributes ordered by relevance by default', (done) ->
@@ -588,9 +605,10 @@ describe 'redisObjectClassDataStore', ->
                 ]
             wherePromise = @redisObjectClassDataStore.where(whereConditions)
             wherePromise.done (returnValue) =>
-              expect(returnValue.length).toEqual 2
-              expect(returnValue[0]).toEqual @testObject2
-              expect(returnValue[1]).toEqual @testObject1
+              expect(returnValue.items.length).toEqual 2
+              expect(returnValue.total).toEqual 2
+              expect(returnValue.items[0]).toEqual @testObject2
+              expect(returnValue.items[1]).toEqual @testObject1
               done()
 
           it 'should return an array of objects that includes keywords in any different attributes ordered by relevance by default', (done) ->
@@ -604,9 +622,9 @@ describe 'redisObjectClassDataStore', ->
                 ]
             wherePromise = @redisObjectClassDataStore.where(whereConditions)
             wherePromise.done (returnValue) =>
-              expect(returnValue.length).toEqual 2
-              expect(returnValue[0]).toEqual @testObject1
-              expect(returnValue[1]).toEqual @testObject2
+              expect(returnValue.items.length).toEqual 2
+              expect(returnValue.items[0]).toEqual @testObject1
+              expect(returnValue.items[1]).toEqual @testObject2
               done()
 
           it 'should return an array of objects that includes multiple keywords in any different attributes ordered by relevance by default', (done) ->
@@ -624,9 +642,9 @@ describe 'redisObjectClassDataStore', ->
             Promise.all([testPromise1,testPromise2,testPromise3]).done (testobjects) =>
               wherePromise = @redisObjectClassDataStore.where(whereConditions)
               wherePromise.done (returnValue) =>
-                expect(returnValue.length).toEqual 2
-                expect(returnValue[0]).toEqual testobjects[1]
-                expect(returnValue[1]).toEqual testobjects[0]
+                expect(returnValue.items.length).toEqual 2
+                expect(returnValue.items[0]).toEqual testobjects[1]
+                expect(returnValue.items[1]).toEqual testobjects[0]
                 done()
 
 
@@ -641,9 +659,9 @@ describe 'redisObjectClassDataStore', ->
           Promise.all([testPromise1,testPromise2,testPromise3]).done =>
             wherePromise = @redisObjectClassDataStore.where(whereConditions)
             wherePromise.done (returnValue) =>
-              expect(returnValue.length).toEqual 2
-              expect(returnValue[0]).toEqual jasmine.objectContaining  url: 'uniqueValue1'
-              expect(returnValue[1]).toEqual jasmine.objectContaining  url: 'uniqueValue3'
+              expect(returnValue.items.length).toEqual 2
+              expect(returnValue.items[0]).toEqual jasmine.objectContaining  url: 'uniqueValue1'
+              expect(returnValue.items[1]).toEqual jasmine.objectContaining  url: 'uniqueValue3'
               done()
 
         it 'should return an array of objects that includes keywords in different attributes, ordered by a sortable field (not weight)', (done) ->
@@ -662,9 +680,9 @@ describe 'redisObjectClassDataStore', ->
           Promise.all([testPromise1,testPromise2,testPromise3]).done =>
             wherePromise = @redisObjectClassDataStore.where(whereConditions)
             wherePromise.done (returnValue) ->
-              expect(returnValue.length).toEqual 2
-              expect(returnValue[0]).toEqual jasmine.objectContaining  url: 'uniqueValue3'
-              expect(returnValue[1]).toEqual jasmine.objectContaining  url: 'uniqueValue1'
+              expect(returnValue.items.length).toEqual 2
+              expect(returnValue.items[0]).toEqual jasmine.objectContaining  url: 'uniqueValue3'
+              expect(returnValue.items[1]).toEqual jasmine.objectContaining  url: 'uniqueValue1'
               done()
 
         it 'should return an array of objects randomly ordered', (done) ->
@@ -681,7 +699,7 @@ describe 'redisObjectClassDataStore', ->
           Promise.all(promiseArray).done =>
             wherePromise = @redisObjectClassDataStore.where(whereConditions)
             wherePromise.done (returnValue) =>
-              expect(returnValue.length).toEqual 5
+              expect(returnValue.items.length).toEqual 5
               expect(returnValue[4]).not.toEqual jasmine.objectContaining  url: 'echo'
               done()
 
@@ -697,10 +715,11 @@ describe 'redisObjectClassDataStore', ->
       Promise.all([testPromise1,testPromise2,testPromise3]).then (createdObjectArray) =>
         allPromise = @redisObjectClassDataStore.all()
         allPromise.done (returnValue) ->
-          expect(returnValue).toContain createdObjectArray[0]
-          expect(returnValue).toContain createdObjectArray[1]
-          expect(returnValue).toContain createdObjectArray[2]
-          expect(returnValue.length).toEqual 3
+          expect(returnValue.items).toContain createdObjectArray[0]
+          expect(returnValue.items).toContain createdObjectArray[1]
+          expect(returnValue.items).toContain createdObjectArray[2]
+          expect(returnValue.items.length).toEqual 3
+          expect(returnValue.total).toEqual 3
           done()
 
     it "should not resolve any instances of a different module's class", (done) ->
@@ -713,8 +732,8 @@ describe 'redisObjectClassDataStore', ->
       #  redisObjectClassDataStoreAllPromise = @redisObjectClassDataStore.all()
       #  differentModelAllPromise = differentModel.all()
       #  Promise.all([redisObjectClassDataStoreAllPromise, differentModelAllPromise]).done (returnArray) =>
-      #    expect(returnArray[0]).toEqual [createdObjectArray[0]]
-      #    expect(returnArray[1]).toEqual [createdObjectArray[1]]
+      #    expect(returnArray.items[0]).toEqual [createdObjectArray[0]]
+      #    expect(returnArray.items[1]).toEqual [createdObjectArray[1]]
       #    done()
 
     it "should return an array of objects sorted consistently (by id)", (done) ->
@@ -727,7 +746,7 @@ describe 'redisObjectClassDataStore', ->
             expect(secondResultArray).toEqual firstResultArray
             done()
 
-    it "should default to sorting by create at time (alphabetically by id)", (done) ->
+    xit "should default to sorting by create at time (alphabetically by id)", (done) ->
       createDelayedObj = (integer) ->
         new Promise (resolve) =>
           nextTick(resolve @redisObjectClassDataStore.create(integer: integer))
@@ -736,7 +755,7 @@ describe 'redisObjectClassDataStore', ->
         delayedCreatePromises.push createDelayedObj.bind(this, i)
       _utilities.promiseEachFn(delayedCreatePromises).then (createdObjectArray) =>
         @redisObjectClassDataStore.all().done (returnArray) ->
-          expect(returnArray.length).toEqual 10
+          expect(returnArray.items.length).toEqual 10
           expect(returnArray).toEqual createdObjectArray
           done()
 
@@ -746,17 +765,18 @@ describe 'redisObjectClassDataStore', ->
         @redisObjectClassDataStore.create( sortableString: string )
       Promise.all(objectsPromise).then (createdObjectArray) =>
         @redisObjectClassDataStore.all(sortBy: 'sortableString').done (returnArray) ->
-          expect(returnArray.length).toEqual 10
-          expect(returnArray[0]).toEqual jasmine.objectContaining sortableString: 'alpha'
-          expect(returnArray[1]).toEqual jasmine.objectContaining sortableString: 'bravo'
-          expect(returnArray[2]).toEqual jasmine.objectContaining sortableString: 'charlie'
-          expect(returnArray[3]).toEqual jasmine.objectContaining sortableString: 'delta'
-          expect(returnArray[4]).toEqual jasmine.objectContaining sortableString: 'echo'
-          expect(returnArray[5]).toEqual jasmine.objectContaining sortableString: 'foxtrot'
-          expect(returnArray[6]).toEqual jasmine.objectContaining sortableString: 'golf'
-          expect(returnArray[7]).toEqual jasmine.objectContaining sortableString: 'hotel'
-          expect(returnArray[8]).toEqual jasmine.objectContaining sortableString: 'india'
-          expect(returnArray[9]).toEqual jasmine.objectContaining sortableString: 'juliet'
+          expect(returnArray.items.length).toEqual 10
+          expect(returnArray.total).toEqual 10
+          expect(returnArray.items[0]).toEqual jasmine.objectContaining sortableString: 'alpha'
+          expect(returnArray.items[1]).toEqual jasmine.objectContaining sortableString: 'bravo'
+          expect(returnArray.items[2]).toEqual jasmine.objectContaining sortableString: 'charlie'
+          expect(returnArray.items[3]).toEqual jasmine.objectContaining sortableString: 'delta'
+          expect(returnArray.items[4]).toEqual jasmine.objectContaining sortableString: 'echo'
+          expect(returnArray.items[5]).toEqual jasmine.objectContaining sortableString: 'foxtrot'
+          expect(returnArray.items[6]).toEqual jasmine.objectContaining sortableString: 'golf'
+          expect(returnArray.items[7]).toEqual jasmine.objectContaining sortableString: 'hotel'
+          expect(returnArray.items[8]).toEqual jasmine.objectContaining sortableString: 'india'
+          expect(returnArray.items[9]).toEqual jasmine.objectContaining sortableString: 'juliet'
           done()
 
     it "should return an array of objects sorted in ascending order when passed sortBy and sortDirection args", (done) ->
@@ -765,17 +785,18 @@ describe 'redisObjectClassDataStore', ->
         @redisObjectClassDataStore.create( sortableString: string )
       Promise.all(objectsPromise).then (createdObjectArray) =>
         @redisObjectClassDataStore.all(sortBy: 'sortableString', sortDirection: 'asc').done (returnArray) ->
-          expect(returnArray.length).toEqual 10
-          expect(returnArray[0]).toEqual jasmine.objectContaining sortableString: 'alpha'
-          expect(returnArray[1]).toEqual jasmine.objectContaining sortableString: 'bravo'
-          expect(returnArray[2]).toEqual jasmine.objectContaining sortableString: 'charlie'
-          expect(returnArray[3]).toEqual jasmine.objectContaining sortableString: 'delta'
-          expect(returnArray[4]).toEqual jasmine.objectContaining sortableString: 'echo'
-          expect(returnArray[5]).toEqual jasmine.objectContaining sortableString: 'foxtrot'
-          expect(returnArray[6]).toEqual jasmine.objectContaining sortableString: 'golf'
-          expect(returnArray[7]).toEqual jasmine.objectContaining sortableString: 'hotel'
-          expect(returnArray[8]).toEqual jasmine.objectContaining sortableString: 'india'
-          expect(returnArray[9]).toEqual jasmine.objectContaining sortableString: 'juliet'
+          expect(returnArray.items.length).toEqual 10
+          expect(returnArray.total).toEqual 10
+          expect(returnArray.items[0]).toEqual jasmine.objectContaining sortableString: 'alpha'
+          expect(returnArray.items[1]).toEqual jasmine.objectContaining sortableString: 'bravo'
+          expect(returnArray.items[2]).toEqual jasmine.objectContaining sortableString: 'charlie'
+          expect(returnArray.items[3]).toEqual jasmine.objectContaining sortableString: 'delta'
+          expect(returnArray.items[4]).toEqual jasmine.objectContaining sortableString: 'echo'
+          expect(returnArray.items[5]).toEqual jasmine.objectContaining sortableString: 'foxtrot'
+          expect(returnArray.items[6]).toEqual jasmine.objectContaining sortableString: 'golf'
+          expect(returnArray.items[7]).toEqual jasmine.objectContaining sortableString: 'hotel'
+          expect(returnArray.items[8]).toEqual jasmine.objectContaining sortableString: 'india'
+          expect(returnArray.items[9]).toEqual jasmine.objectContaining sortableString: 'juliet'
           done()
 
     it "should return an array of objects sorted in decending order when passed sortBy and sortDirection args", (done) ->
@@ -785,17 +806,18 @@ describe 'redisObjectClassDataStore', ->
       Promise.all(objectsPromise).then (createdObjectArray) =>
 
         @redisObjectClassDataStore.all(sortBy: 'sortableString', sortDirection: 'desc').done (returnArray) ->
-          expect(returnArray.length).toEqual 10
-          expect(returnArray[0]).toEqual jasmine.objectContaining sortableString: 'juliet'
-          expect(returnArray[1]).toEqual jasmine.objectContaining sortableString: 'india'
-          expect(returnArray[2]).toEqual jasmine.objectContaining sortableString: 'hotel'
-          expect(returnArray[3]).toEqual jasmine.objectContaining sortableString: 'golf'
-          expect(returnArray[4]).toEqual jasmine.objectContaining sortableString: 'foxtrot'
-          expect(returnArray[5]).toEqual jasmine.objectContaining sortableString: 'echo'
-          expect(returnArray[6]).toEqual jasmine.objectContaining sortableString: 'delta'
-          expect(returnArray[7]).toEqual jasmine.objectContaining sortableString: 'charlie'
-          expect(returnArray[8]).toEqual jasmine.objectContaining sortableString: 'bravo'
-          expect(returnArray[9]).toEqual jasmine.objectContaining sortableString: 'alpha'
+          expect(returnArray.total).toEqual 10
+          expect(returnArray.items.length).toEqual 10
+          expect(returnArray.items[0]).toEqual jasmine.objectContaining sortableString: 'juliet'
+          expect(returnArray.items[1]).toEqual jasmine.objectContaining sortableString: 'india'
+          expect(returnArray.items[2]).toEqual jasmine.objectContaining sortableString: 'hotel'
+          expect(returnArray.items[3]).toEqual jasmine.objectContaining sortableString: 'golf'
+          expect(returnArray.items[4]).toEqual jasmine.objectContaining sortableString: 'foxtrot'
+          expect(returnArray.items[5]).toEqual jasmine.objectContaining sortableString: 'echo'
+          expect(returnArray.items[6]).toEqual jasmine.objectContaining sortableString: 'delta'
+          expect(returnArray.items[7]).toEqual jasmine.objectContaining sortableString: 'charlie'
+          expect(returnArray.items[8]).toEqual jasmine.objectContaining sortableString: 'bravo'
+          expect(returnArray.items[9]).toEqual jasmine.objectContaining sortableString: 'alpha'
           done()
 
     it "should return an array of 5 items when passed a limit of 5", (done) ->
@@ -804,7 +826,8 @@ describe 'redisObjectClassDataStore', ->
         @redisObjectClassDataStore.create( sortableString: string )
       Promise.all(objectsPromise).then (createdObjectArray) =>
         @redisObjectClassDataStore.all(limit: 5).done (returnArray) ->
-          expect(returnArray.length).toEqual 5
+          expect(returnArray.items.length).toEqual 5
+          expect(returnArray.total).toEqual 10
           done()
 
     it "should return an array of all available items when passed a limit of 0", (done) ->
@@ -813,7 +836,8 @@ describe 'redisObjectClassDataStore', ->
         @redisObjectClassDataStore.create( sortableString: string )
       Promise.all(objectsPromise).then (createdObjectArray) =>
         @redisObjectClassDataStore.all(limit: 0).done (returnArray) ->
-          expect(returnArray.length).toEqual 10
+          expect(returnArray.items.length).toEqual 10
+          expect(returnArray.total).toEqual 10
           done()
 
     it "should return an array of one item when passed a limit of 1", (done) ->
@@ -822,7 +846,8 @@ describe 'redisObjectClassDataStore', ->
         @redisObjectClassDataStore.create( sortableString: string )
       Promise.all(objectsPromise).then (createdObjectArray) =>
         @redisObjectClassDataStore.all(limit: 1).done (returnArray) ->
-          expect(returnArray.length).toEqual 1
+          expect(returnArray.items.length).toEqual 1
+          expect(returnArray.total).toEqual 10
           done()
 
     it "should return an array of objects sorted with a limit and an offset when passed args", (done) ->
@@ -831,11 +856,12 @@ describe 'redisObjectClassDataStore', ->
         @redisObjectClassDataStore.create( sortableString: string )
       Promise.all(objectsPromise).then (createdObjectArray) =>
         @redisObjectClassDataStore.all(sortBy: 'sortableString', offset: 6).done (returnArray) ->
-          expect(returnArray.length).toEqual 4
-          expect(returnArray[0]).toEqual jasmine.objectContaining sortableString: 'golf'
-          expect(returnArray[1]).toEqual jasmine.objectContaining sortableString: 'hotel'
-          expect(returnArray[2]).toEqual jasmine.objectContaining sortableString: 'india'
-          expect(returnArray[3]).toEqual jasmine.objectContaining sortableString: 'juliet'
+          expect(returnArray.items.length).toEqual 4
+          expect(returnArray.total).toEqual 10
+          expect(returnArray.items[0]).toEqual jasmine.objectContaining sortableString: 'golf'
+          expect(returnArray.items[1]).toEqual jasmine.objectContaining sortableString: 'hotel'
+          expect(returnArray.items[2]).toEqual jasmine.objectContaining sortableString: 'india'
+          expect(returnArray.items[3]).toEqual jasmine.objectContaining sortableString: 'juliet'
           done()
 
     it "should return an array of objects sorted with a limit and an offset when passed args", (done) -> #This test failed sporadically once
@@ -844,12 +870,13 @@ describe 'redisObjectClassDataStore', ->
         @redisObjectClassDataStore.create( sortableString: string )
       Promise.all(objectsPromise).then (createdObjectArray) =>
         @redisObjectClassDataStore.all(sortBy: 'sortableString', limit: 5, offset: 3).done (returnArray) ->
-          expect(returnArray.length).toEqual 5
-          expect(returnArray[0]).toEqual jasmine.objectContaining sortableString: 'delta'
-          expect(returnArray[1]).toEqual jasmine.objectContaining sortableString: 'echo'
-          expect(returnArray[2]).toEqual jasmine.objectContaining sortableString: 'foxtrot'
-          expect(returnArray[3]).toEqual jasmine.objectContaining sortableString: 'golf'
-          expect(returnArray[4]).toEqual jasmine.objectContaining sortableString: 'hotel'
+          expect(returnArray.items.length).toEqual 5
+          expect(returnArray.total).toEqual 10
+          expect(returnArray.items[0]).toEqual jasmine.objectContaining sortableString: 'delta'
+          expect(returnArray.items[1]).toEqual jasmine.objectContaining sortableString: 'echo'
+          expect(returnArray.items[2]).toEqual jasmine.objectContaining sortableString: 'foxtrot'
+          expect(returnArray.items[3]).toEqual jasmine.objectContaining sortableString: 'golf'
+          expect(returnArray.items[4]).toEqual jasmine.objectContaining sortableString: 'hotel'
           done()
 
     it "should return an array of objects sorted in decending order when passed sortBy and sortDirection args", (done) ->
@@ -858,9 +885,10 @@ describe 'redisObjectClassDataStore', ->
         @redisObjectClassDataStore.create( sortableString: string )
       Promise.all(objectsPromise).then (createdObjectArray) =>
         @redisObjectClassDataStore.all(sortBy: 'sortableString', sortDirection: 'desc', limit: 2, offset: 7).done (returnArray) ->
-          expect(returnArray.length).toEqual 2
-          expect(returnArray[0]).toEqual jasmine.objectContaining sortableString: 'charlie'
-          expect(returnArray[1]).toEqual jasmine.objectContaining sortableString: 'bravo'
+          expect(returnArray.items.length).toEqual 2
+          expect(returnArray.total).toEqual 10
+          expect(returnArray.items[0]).toEqual jasmine.objectContaining sortableString: 'charlie'
+          expect(returnArray.items[1]).toEqual jasmine.objectContaining sortableString: 'bravo'
           done()
 
     it "should return an array of objects sorted in decending order when passed sortBy and sortDirection args", (done) ->
@@ -869,15 +897,16 @@ describe 'redisObjectClassDataStore', ->
         @redisObjectClassDataStore.create( sortableString: string )
       Promise.all(objectsPromise).then (createdObjectArray) =>
         @redisObjectClassDataStore.all(sortBy: 'sortableString', sortDirection: 'desc', limit: 8, offset: 1).done (returnArray) ->
-          expect(returnArray.length).toEqual 8
-          expect(returnArray[0]).toEqual jasmine.objectContaining sortableString: 'india'
-          expect(returnArray[1]).toEqual jasmine.objectContaining sortableString: 'hotel'
-          expect(returnArray[2]).toEqual jasmine.objectContaining sortableString: 'golf'
-          expect(returnArray[3]).toEqual jasmine.objectContaining sortableString: 'foxtrot'
-          expect(returnArray[4]).toEqual jasmine.objectContaining sortableString: 'echo'
-          expect(returnArray[5]).toEqual jasmine.objectContaining sortableString: 'delta'
-          expect(returnArray[6]).toEqual jasmine.objectContaining sortableString: 'charlie'
-          expect(returnArray[7]).toEqual jasmine.objectContaining sortableString: 'bravo'
+          expect(returnArray.items.length).toEqual 8
+          expect(returnArray.total).toEqual 10
+          expect(returnArray.items[0]).toEqual jasmine.objectContaining sortableString: 'india'
+          expect(returnArray.items[1]).toEqual jasmine.objectContaining sortableString: 'hotel'
+          expect(returnArray.items[2]).toEqual jasmine.objectContaining sortableString: 'golf'
+          expect(returnArray.items[3]).toEqual jasmine.objectContaining sortableString: 'foxtrot'
+          expect(returnArray.items[4]).toEqual jasmine.objectContaining sortableString: 'echo'
+          expect(returnArray.items[5]).toEqual jasmine.objectContaining sortableString: 'delta'
+          expect(returnArray.items[6]).toEqual jasmine.objectContaining sortableString: 'charlie'
+          expect(returnArray.items[7]).toEqual jasmine.objectContaining sortableString: 'bravo'
           done()
 
   describe '#create', ->
@@ -965,7 +994,7 @@ describe 'redisObjectClassDataStore', ->
           expect(testObject.lengthValidation).toEqual 'ninechars'
           done()
 
-      it 'should perfredisObjectClassDataStore the validation only when the property is present', (done) ->
+      it 'should perform the validation only when the property is present', (done) ->
         @redisObjectClassDataStore.attributes.lengthValidation =
           dataType: 'string'
           validates:
@@ -1179,70 +1208,70 @@ describe 'redisObjectClassDataStore', ->
           expect(error).toContain(new Error 'equalToValidation should equal 10')
           done()
 
-    describe 'fredisObjectClassDataStoreat validation', ->
+    describe 'format validation', ->
       describe "'with'", ->
         it 'should not fail when the attribute is not present', (done) ->
           pending()
 
-        it "should create objects that pass fredisObjectClassDataStoreat validation 'with' a regular expression that accounts for all of the data", (done) ->
-          @redisObjectClassDataStore.attributes.fredisObjectClassDataStoreatValidation =
+        it "should create objects that pass format validation 'with' a regular expression that accounts for all of the data", (done) ->
+          @redisObjectClassDataStore.attributes.formatValidation =
             dataType: 'string'
             validates:
-              fredisObjectClassDataStoreat:
+              format:
                 with: /[a-zA-Z]+/
-          @redisObjectClassDataStore.create(fredisObjectClassDataStoreatValidation: 'abcd').then (testObject) =>
-            expect(testObject.fredisObjectClassDataStoreatValidation).toEqual 'abcd'
+          @redisObjectClassDataStore.create(formatValidation: 'abcd').then (testObject) =>
+            expect(testObject.formatValidation).toEqual 'abcd'
             done()
 
-        it "should create objects that pass fredisObjectClassDataStoreat validation 'with' a regular expression that only accounts for some of the data", (done) ->
-          @redisObjectClassDataStore.attributes.fredisObjectClassDataStoreatValidation =
+        it "should create objects that pass format validation 'with' a regular expression that only accounts for some of the data", (done) ->
+          @redisObjectClassDataStore.attributes.formatValidation =
             dataType: 'string'
             validates:
-              fredisObjectClassDataStoreat:
+              format:
                 with: /[a-zA-Z]+/
-          @redisObjectClassDataStore.create(fredisObjectClassDataStoreatValidation: 'ab123cd').then (testObject) =>
-            expect(testObject.fredisObjectClassDataStoreatValidation).toEqual 'ab123cd'
+          @redisObjectClassDataStore.create(formatValidation: 'ab123cd').then (testObject) =>
+            expect(testObject.formatValidation).toEqual 'ab123cd'
             done()
 
-        it "should not create objects that fail fredisObjectClassDataStoreat validation 'with' a regular expression", (done) ->
-          @redisObjectClassDataStore.attributes.fredisObjectClassDataStoreatValidation =
+        it "should not create objects that fail format validation 'with' a regular expression", (done) ->
+          @redisObjectClassDataStore.attributes.formatValidation =
             dataType: 'string'
             validates:
-              fredisObjectClassDataStoreat:
+              format:
                 with: /[a-zA-Z]+/
-          @redisObjectClassDataStore.create(fredisObjectClassDataStoreatValidation: '123').catch (error) =>
-            expect(error).toContain(new Error 'fredisObjectClassDataStoreatValidation should meet the fredisObjectClassDataStoreat requirements')
+          @redisObjectClassDataStore.create(formatValidation: '123').catch (error) =>
+            expect(error).toContain(new Error 'formatValidation should meet the format requirements')
             done()
 
-        it 'should perfredisObjectClassDataStore the validation only when the property is present', (done) ->
-          @redisObjectClassDataStore.attributes.fredisObjectClassDataStoreatValidation =
+        it 'should perform the validation only when the property is present', (done) ->
+          @redisObjectClassDataStore.attributes.formatValidation =
             dataType: 'string'
             validates:
-              fredisObjectClassDataStoreat:
+              format:
                 with: /[a-zA-Z]+/
-          @redisObjectClassDataStore.create(one: 1, fredisObjectClassDataStoreatValidation: null).then (testObject) =>
-            expect(testObject.fredisObjectClassDataStoreatValidation).toEqual undefined
+          @redisObjectClassDataStore.create(one: 1, formatValidation: null).then (testObject) =>
+            expect(testObject.formatValidation).toEqual undefined
             done()
 
       describe "'without'", ->
         it "should not create objects that fail validation", (done) ->
-          @redisObjectClassDataStore.attributes.fredisObjectClassDataStoreatValidation =
+          @redisObjectClassDataStore.attributes.formatValidation =
             dataType: 'string'
             validates:
-              fredisObjectClassDataStoreat:
+              format:
                 without: /[a-zA-Z]+/
-          @redisObjectClassDataStore.create(fredisObjectClassDataStoreatValidation: 'abcd').catch (error) ->
-            expect(error).toContain(new Error 'fredisObjectClassDataStoreatValidation should meet the fredisObjectClassDataStoreat requirements')
+          @redisObjectClassDataStore.create(formatValidation: 'abcd').catch (error) ->
+            expect(error).toContain(new Error 'formatValidation should meet the format requirements')
             done()
 
-        it "should create objects that pass fredisObjectClassDataStoreat validation", (done) ->
-          @redisObjectClassDataStore.attributes.fredisObjectClassDataStoreatValidation =
+        it "should create objects that pass format validation", (done) ->
+          @redisObjectClassDataStore.attributes.formatValidation =
             dataType: 'string'
             validates:
-              fredisObjectClassDataStoreat:
+              format:
                 without: /[a-zA-Z]+/
-          @redisObjectClassDataStore.create(fredisObjectClassDataStoreatValidation: '123').then (testObject) =>
-            expect(testObject.fredisObjectClassDataStoreatValidation).toEqual '123'
+          @redisObjectClassDataStore.create(formatValidation: '123').then (testObject) =>
+            expect(testObject.formatValidation).toEqual '123'
             done()
 
     describe 'inclusionIn validation', ->
@@ -1284,13 +1313,13 @@ describe 'redisObjectClassDataStore', ->
           done()
 
     describe 'uniqueness validation', ->
-      it 'should not create objects that fail validation', (done) ->
+      xit 'should not create objects that fail validation', (done) ->
         @redisObjectClassDataStore.attributes.uniquenessValidation =
           dataType: 'string'
           identifiable: true
           validates:
             uniqueness: true
-        @redisObjectClassDataStore.redis.set 'Test:uniquenessValidation:notUnique', 'test', () =>
+        @redisObjectClassDataStore.redis.set 'RedisObjectClassDataStore:uniquenessValidation:notUnique', 'test', () =>
           @redisObjectClassDataStore.create(uniquenessValidation: 'notUnique').catch (errors) =>
             expect(errors).toContain(new Error 'uniquenessValidation should be a unique value')
             done()
@@ -1330,7 +1359,7 @@ describe 'redisObjectClassDataStore', ->
     it 'should update the relevant sorted set when an integer field is updated', (done) ->
       testObjectPromise = @redisObjectClassDataStore.update @testObj.id, integer: 9
       testObjectPromise.done (obj) =>
-        @redisObjectClassDataStore.redis.zrangebyscore 'Test#integers', 0, 10, 'withscores', (err, res) =>
+        @redisObjectClassDataStore.redis.zrangebyscore 'RedisObjectClassDataStore#integers', 0, 10, 'withscores', (err, res) =>
           expect(res).toEqual [@testObj.id, '9']
           done()
 
@@ -1338,23 +1367,23 @@ describe 'redisObjectClassDataStore', ->
       testObjectPromise = @redisObjectClassDataStore.update @testObj.id, identifier: 'edited'
       testObjectPromise.done (obj) =>
         multi = @redisObjectClassDataStore.redis.multi()
-        multi.get 'Test#identifier:edited'
-        multi.get 'Test#identifier:identifier'
+        multi.get 'RedisObjectClassDataStore#identifier:edited'
+        multi.get 'RedisObjectClassDataStore#identifier:identifier'
         multi.exec (err, res) =>
           expect(res[0]).toEqual @testObj.id
           expect(res[1]).toEqual null
           expect(res.length).toEqual 2
           done()
 
-    it 'should add to a set when an association field is updated', (done) ->
+    xit 'should add to a set when an association field is updated', (done) ->
       testObjectPromise = @redisObjectClassDataStore.update @testObj.id, manyReferences: ['editedId1']
       testObjectPromise.done (obj) =>
-        @redisObjectClassDataStore.redis.smembers 'Test#manyReferences:' + @testObj.id, (err, members) ->
+        @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore#manyReferences:' + @testObj.id, (err, members) ->
           expect(members).toContain 'editedId1'
           expect(members.length).toEqual 4
           done()
 
-    it 'should have all associated objects when an association field is updated', (done) ->
+    xit 'should have all associated objects when an association field is updated', (done) ->
       testObjectPromise = @redisObjectClassDataStore.update @testObj.id, manyReferences: ['editedId1']
       testObjectPromise.done (obj) =>
         expect(obj.manyReferences.length).toEqual 4
@@ -1368,8 +1397,8 @@ describe 'redisObjectClassDataStore', ->
       testObjectPromise = @redisObjectClassDataStore.update @testObj.id, boolean: false
       testObjectPromise.done (obj) =>
         multi = @redisObjectClassDataStore.redis.multi()
-        multi.zrange 'Test#boolean:false', 0, -1
-        multi.zrange 'Test#boolean:true', 0, -1
+        multi.zrange 'RedisObjectClassDataStore#boolean:false', 0, -1
+        multi.zrange 'RedisObjectClassDataStore#boolean:true', 0, -1
         multi.exec (err, res) =>
           expect(res[0]).toEqual [@testObj.id]
           expect(res[1]).toEqual []
@@ -1383,21 +1412,21 @@ describe 'redisObjectClassDataStore', ->
         keysCalled = []
         for call in calledArgs
           keysCalled.push call[0]
-        expect(keysCalled).toContain('Test#words:searchableText:s')
-        expect(keysCalled).toContain('Test#words:searchableText:se')
-        expect(keysCalled).toContain('Test#words:searchableText:sea')
-        expect(keysCalled).toContain('Test#words:searchableText:sear')
-        expect(keysCalled).toContain('Test#words:searchableText:search')
-        expect(keysCalled).toContain('Test#words:searchableText:t')
-        expect(keysCalled).toContain('Test#words:searchableText:th')
-        expect(keysCalled).toContain('Test#words:searchableText:thi')
-        expect(keysCalled).toContain('Test#words:searchableText:this')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:s')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:se')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:sea')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:sear')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:search')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:t')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:th')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:thi')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:this')
         done()
 
     it 'should update the relevant sorted set when a sortable string is updated', (done) ->
       testObjectPromise = @redisObjectClassDataStore.update @testObj.id, sortableString: 'second'
       testObjectPromise.done (obj) =>
-        @redis.zrange "TestOrderedSet#sortableStrings", 0, -1, (error, list) =>
+        @redis.zrange "RedisObjectClassDataStoreOrderedSet#sortableStrings", 0, -1, (error, list) =>
           expect(list).toEqual [@testObj.id]
           done()
 
@@ -1414,7 +1443,7 @@ describe 'redisObjectClassDataStore', ->
       it 'should remove values from a set when an association is updated', (done) ->
         testObjectPromise = @redisObjectClassDataStore.update @testObj.id, remove_manyReferences: ['two2', '2']
         testObjectPromise.done (obj) =>
-          @redisObjectClassDataStore.redis.smembers 'Test#manyReferences:' + @testObj.id, (err, members) ->
+          @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore#manyReferences:' + @testObj.id, (err, members) ->
             expect(members).toContain 'one1'
             expect(members).toContain 'three3'
             expect(members.length).toEqual 2
