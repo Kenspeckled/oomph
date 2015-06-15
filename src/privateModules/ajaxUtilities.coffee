@@ -1,4 +1,6 @@
 Promise = require 'promise'
+_utilities = require '../publicModules/utilities'
+
 ajaxUtilities = 
 
   httpRequest: (method, url, args, isJson) ->
@@ -8,15 +10,14 @@ ajaxUtilities =
       if method != 'POST'
         if args
           uri += '?'
-          uri += @objectToQueryString args
+          uri += _utilities.objectToQueryString args
         client.open method, uri
         client.send()
       else
-        params = @objectToQueryString args
+        params = _utilities.objectToQueryString args
         client.open method, url
         client.setRequestHeader("Content-type", "application/x-www-form-urlencoded")
         client.send params 
-      console.log "Ajax", method + " to " + uri, params
       client.onload = ->
         if @status == 200
           if isJson
@@ -25,22 +26,5 @@ ajaxUtilities =
             resolve @response
         else
           reject @statusText
-
-  queryStringToObject: (querystring) ->
-    pairs = querystring.replace('?','').split('&')
-    result = {}
-    pairs.forEach (pair) ->
-      pair = pair.split('=')
-      result[pair[0]] = decodeURIComponent(pair[1] || '')
-    result
-
-  objectToQueryString: (obj, prefix) ->
-    str = []
-    for p of obj
-      if obj.hasOwnProperty(p)
-        k = if prefix then prefix + '[' + p + ']' else p
-        v = obj[p]
-        str.push if typeof v == 'object' then @objectToQueryString(v, k) else encodeURIComponent(k) + '=' + encodeURIComponent(v)
-    str.join '&'
 
 module.exports = ajaxUtilities

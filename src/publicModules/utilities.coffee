@@ -54,6 +54,23 @@ utilities =
       promiseReturnArray.push promise
     return Promise.all(promiseReturnArray)
 
+  queryStringToObject: (querystring) ->
+    pairs = querystring.replace('?','').split('&')
+    result = {}
+    pairs.forEach (pair) ->
+      pair = pair.split('=')
+      result[pair[0]] = decodeURIComponent(pair[1] || '')
+    result
+
+  objectToQueryString: (obj, prefix) ->
+    str = []
+    for p of obj
+      if obj.hasOwnProperty(p)
+        k = if prefix then prefix + '[' + p + ']' else p
+        v = obj[p]
+        str.push if typeof v == 'object' then @objectToQueryString(v, k) else encodeURIComponent(k) + '=' + encodeURIComponent(v)
+    str.join '&'
+
   camelCase: (str) ->
     str.replace(/(?:^\w|[A-Z]|\b\w|_\w)/g, (letter, index) ->
       if index == 0 then letter.toLowerCase() else letter.toUpperCase()
