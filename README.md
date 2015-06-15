@@ -1,2 +1,2 @@
-# Rook
-**R**edis backed **O**bject **O**riented javascript application **K**it
+# Oomph 
+Object Oriented javascript models for the client and the server

@@ -1,8 +1,7 @@
 {
-  "name": "rook",
-  "private": true,
+  "name": "oomph",
   "version": "0.2.1",
-  "description": "Redis backed Object Oriented javascript application Kit",
+  "description": "Object Oriented javascript models for the client and the server",
   "main": "./lib/index.js",
   "scripts": {
     "test": "jasmine",
@@ -10,13 +9,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:Kenspeckled/rook.git"
+    "url": "git@github.com:Kenspeckled/oomph.git"
   },
   "keywords": [
-    "Redis",
     "Object",
     "Oriented",
-    "Framework"
+    "Redis",
+    "AJAX"
   ],
   "contributors": [
     {
@@ -30,9 +29,9 @@
   ],
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/Kenspeckled/rook/issues"
+    "url": "https://github.com/Kenspeckled/oomph/issues"
   },
-  "homepage": "https://github.com/Kenspeckled/rook",
+  "homepage": "https://github.com/Kenspeckled/oomph",
   "devDependencies": {
     "jasmine": "^2.3.1"
   },
