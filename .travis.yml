@@ -1,0 +1,13 @@
+language: node_js
+
+node_js:
+  - "0.12"
+  - "0.11"
+  - "0.10"
+
+#addons:
+#  code_climate:
+#    repo_token: acf52780a2e7ae078408710be425fe303069d1040c5c689bdf10cb9b15633f74
+#
+#after_script:
+#  - codeclimate < lcov.info
