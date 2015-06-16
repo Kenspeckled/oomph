@@ -5,8 +5,8 @@ node_js:
   - "0.11"
   - "0.10"
 
-services:
-  - redis-server
+before_script: 
+ - sudo redis-server /etc/redis/redis.conf --port 1111
 
 #addons:
 #  code_climate:

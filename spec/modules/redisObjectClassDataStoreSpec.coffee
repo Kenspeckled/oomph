@@ -8,9 +8,9 @@ ValidationError = require '../../lib/models/ValidationError'
 describe 'redisObjectClassDataStore', ->
 
   beforeAll (done) ->
-    @redis = Redis.createClient(1734, 'localhost')
+    @redis = Redis.createClient(1111, 'localhost')
     @redis.on "error", ->
-      throw new Error "Redis server not connected on port 1734 - try running 'redis-server --port 1734 &'"
+      throw new Error "Redis server not connected on port 1111 - try running 'redis-server --port 1111 &'"
     @redis.on "ready", =>
       @redis.flushdb()
       done()
