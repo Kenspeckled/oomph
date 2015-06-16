@@ -6,6 +6,7 @@ node_js:
   - "0.10"
 
 before_script: 
+ - sudo redis-server /etc/redis/redis.conf
  - sudo redis-server /etc/redis/redis.conf --port 1111
 
 #addons:
