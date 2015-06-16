@@ -23,10 +23,10 @@ ajaxObjectClassDataStore =
     @ajax.get '/api/' + _.kebabCase(@name) + '/' + id
 
   all: ->
-    @ajax.get '/api/' + _utilities.pluralKababCase(@name)
+    @ajax.get '/api/' + _utilities.pluralKebabCase(@name)
 
   where: (opts) ->
-    @ajax.get '/api/' + _utilities.pluralKababCase(@name), opts
+    @ajax.get '/api/' + _utilities.pluralKebabCase(@name), opts
 
   create: (opts) ->
     @ajax.post '/api/' + _.kebabCase(@name), opts

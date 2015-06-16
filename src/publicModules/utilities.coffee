@@ -79,7 +79,7 @@ utilities =
   plural: (str) ->
     pluralize(str)
 
-  pluralKababCase: (str) ->
+  pluralKebabCase: (str) ->
     kebabCaseStr = _.kebabCase(str)
     match = kebabCaseStr.match /-(\w+)$/
     if match
