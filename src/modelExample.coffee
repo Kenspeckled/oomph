@@ -3,6 +3,7 @@ class Engine extends ObjectOrientedModel
     manufacturingId:
       dataType: 'string'
       identifiable: true
+      sortable: true
       validates:
         presence: true
         uniqueness: true
@@ -22,7 +23,11 @@ class Engine extends ObjectOrientedModel
 
 # This should generate the following database data:
 # 'Engine:[engineId]' => { id: 'engine1', manufacturingId: 'abc', modelSpec: 'xk13ed', horsePower: 5, parts: 3, accessories: 3 }
+# 'Engine#manufacturingId:abc' => 'engine1'
+# 'Engine>id' => [ 1 => 'engine1']
+# 'Engine>manufacturingId' => [ 1 => 'engine1']
 # 'ModelSpec:[modelSpecId]' => { modelName: 'Jaguar', modelDetails: 'This is a model desciption', modelID: '123234'}
+# 'Engine>horsePower' => [ 5 => 'engine1']
 # 'Engine:[engineId]#parts' => [ '12345', '123545', '351324' ]
 # 'Part:[partId]#engines' => [ 'engine1', 'engine2' ]
 # 'Engine:[engineId]#acessories' => [ '2', '4', '5' ]
