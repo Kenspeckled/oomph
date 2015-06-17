@@ -1,4 +1,4 @@
-ClientObject = require '../../lib/models/ClientObject'
+ClientObject = require '../../src/models/ClientObject'
 
 describe 'ClientObject', ->
   it 'should be a class', ->

@@ -1,4 +1,4 @@
-Base = require '../../lib/models/Base'
+Base = require '../../src/models/Base'
 
 describe 'Base', ->
   it 'should be a class', ->

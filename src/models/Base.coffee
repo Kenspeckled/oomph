@@ -4,11 +4,6 @@ publishSubscribe = require '../publicModules/publishSubscribe'
 class Base
   constructor: (initialisedProps) ->
     _class = @constructor
-    @beforeInitialise(initialisedProps) if @beforeInitialise
-    if _.has(_class, 'allowedProps') and _.isObject(initialisedProps)
-      for prop in _class.allowedProps
-        this[prop] = initialisedProps[prop]
-    @afterInitialise(initialisedProps) if @afterInitialise
 
   @extend = (args...) ->
     _class = this
@@ -38,7 +33,7 @@ class Base
 
   @getName = ->
     funcNameRegex = /function (.{1,})\(/
-    results = funcNameRegex.exec(@toString())
+    results = funcNameRegex.exec(_class.toString())
     if results and results.length > 1 then results[1] else ''
 
 

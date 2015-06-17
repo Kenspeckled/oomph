@@ -152,7 +152,7 @@ indexSearchableString = (attr, words, id) ->
     wordSegment = ''
     for char in word
       wordSegment += char
-      wordSegmentKey = @name + '#words:' + attr + ':' + wordSegment
+      wordSegmentKey = @name + '#' + attr + '/' + wordSegment
       indexPromiseFn = (wordSegmentKey, id) =>
         new Promise (resolve) =>
           @redis.zadd wordSegmentKey, 1, id, (res) ->
@@ -167,7 +167,7 @@ removeIndexedSearchableString = (attr, words, id) ->
     wordSegment = ''
     for char in word
       wordSegment += char
-      wordSegmentKey = @name + '#words:' + attr + ':' + wordSegment
+      wordSegmentKey = @name + '#' + attr + '/' + wordSegment
       indexPromiseFn = (wordSegmentKey, id) =>
         new Promise (resolve) =>
           @redis.zrem wordSegmentKey, id, (res) ->
@@ -199,18 +199,18 @@ writeAttributes = (props) ->
         self.redis.zadd sortedSetName, largestSortedSetSize, props.id, (error, res) ->
           indexSortedSet.apply(self, [sortedSetName, attributeName]).then ->
             resolve()
-    sortedSetName = self.name + "OrderedSet#ids"
+    sortedSetName = self.name + ">id"
     indexingPromises.push indexPromiseFn(sortedSetName, "id")
     for attr, obj of self.attributes
       continue if props[attr] == undefined #props[attr] can be false for boolean dataType
       value = props[attr]
       switch obj['dataType']
         when 'integer'
-          sortedSetName = self.name + "#" + pluralise(attr)
+          sortedSetName = self.name + ">" + attr
           multi.zadd sortedSetName, parseInt(value), props.id #sorted set
         when 'string'
           if obj.sortable
-            sortedSetName = self.name + "OrderedSet#" + pluralise(attr)
+            sortedSetName = self.name + ">" + attr
             indexingPromises.push indexPromiseFn(sortedSetName, attr)
           if obj.identifiable
             multi.set self.name + "#" + attr + ":" + value, props.id #string
@@ -316,7 +316,7 @@ findKeywordsInAnyFields = (fields, keywords, weightOptions) ->
       keyNames = []
       for field in fields
         weight = (if weightOptions[field] and weightOptions[field].weight then weightOptions[field].weight else 1)
-        keyNames.push name: @name + "#words:" + field + ":" + keyword, weight: weight
+        keyNames.push name: @name + "#" + field + "/" + keyword, weight: weight
       unionKey = 'keywordUnionSet:'+_utilities.randomString(5)
       unionKeyPromise = new Promise (resolve) =>
         @redis.zunionstore unionKey, keyNames.length, _.map(keyNames, 'name')..., 'weights', _.map(keyNames, 'weight')..., ->
@@ -422,9 +422,9 @@ redisObjectDataStore =
     sortedSetKeys = []
     unionSortedSetKeys = []
     if args.sortBy == 'rand'
-      sortedSetKeys.push name: @name + 'OrderedSet#ids'
+      sortedSetKeys.push name: self.name + '>id'
     else if args.sortBy != 'relevance'
-      sortedSetKeys.push name: @name + 'OrderedSet#' + pluralise(args.sortBy)
+      sortedSetKeys.push name: self.name + '>' + args.sortBy
     weightOptions = {}
     keywordSearchPromise = new Promise (r) -> r()
     if args.includes
@@ -445,7 +445,7 @@ redisObjectDataStore =
         for field in fields
           weight = (if weightOptions[field] and weightOptions[field].weight then weightOptions[field].weight else 1)
           for keyword in keywords
-            sortedSetKeys.push name: @name + "#words:" + field + ":" + keyword, weight: weight
+            sortedSetKeys.push name: self.name + "#" + field + "/" + keyword, weight: weight
     for option in Object.keys(args)
       optionValue = args[option]
       if not @attributes[option]
@@ -453,7 +453,7 @@ redisObjectDataStore =
       switch @attributes[option].dataType
         when 'integer' #add less than and greater than functionality
           tempIntegerKey = 'temporaryIntegerSet:'+_utilities.randomString(5)
-          integerSortedSetName = @name + "#" + pluralise(option)
+          integerSortedSetName = self.name + '>' + option
           minValue = '-inf'
           maxValue = '+inf'
           if optionValue.greaterThan
@@ -478,15 +478,15 @@ redisObjectDataStore =
           sortedSetKeys.push name: integerSortedSetName
         when 'boolean'
           sortedSetKeys.push  name: self.name + "#" + option + ":" + optionValue
-        when 'association'
-          # FIXME: A bit of a mess...
-          assocationClass = @attributes[option].preloadModel
-          if assocationClass 
-            pluralAttr = pluralise(self.name.toLowerCase()) 
-            if (assocationClass.getName().toLowerCase() == option)
-              if assocationClass.attributes[pluralAttr] and assocationClass.attributes[pluralAttr].many
-                manySetName = assocationClass.getName() + "#" + pluralAttr + ":" + optionValue
-                sortedSetKeys.push  name: manySetName
+        #when 'association'
+          ## FIXME: A bit of a mess...
+          #assocationClass = @attributes[option].preloadModel
+          #if assocationClass 
+          #  pluralAttr = pluralise(self.name.toLowerCase()) 
+          #  if (assocationClass.getName().toLowerCase() == option)
+          #    if assocationClass.attributes[pluralAttr] and assocationClass.attributes[pluralAttr].many
+          #      manySetName = assocationClass.getName() + "#" + pluralAttr + ":" + optionValue
+          #      sortedSetKeys.push  name: manySetName
     if !whereConditionPromise
       whereConditionPromise = new Promise (r) -> r()
     prepareWhereConditionPromise = whereConditionPromise.then -> keywordSearchPromise
@@ -556,7 +556,7 @@ redisObjectDataStore =
           remove = true
           removeValue = updateFields[attr]
           attr = attr.replace(/^remove_/, '')
-        orderedSetName = @name + "OrderedSet" + "#" + pluralise(attr)
+        orderedSetName = @name + '>' + attr
         originalValue = originalObj[attr]
         newValue = updateFields[attr]
         # if there is an actual change or it's a boolean
@@ -567,7 +567,7 @@ redisObjectDataStore =
           return if !obj
           switch obj.dataType
             when 'integer'
-              sortedSetName = @name + "#" + pluralise(attr)
+              sortedSetName = @name + '>' + attr
               multi.zrem sortedSetName, id
             when 'text'
               if obj.searchable

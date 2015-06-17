@@ -1,4 +1,4 @@
-ServerObject = require '../../lib/models/ServerObject'
+ServerObject = require '../../src/models/ServerObject'
 
 describe 'ServerObject', ->
   it 'should be a class', ->

@@ -1,9 +1,9 @@
 Redis = require 'redis'
 Promise = require 'promise'
-redisObjectClassDataStore = require '../../lib/privateModules/redisObjectClassDataStore'
-_utilities = require '../../lib/publicModules/utilities'
+redisObjectClassDataStore = require '../../src/privateModules/redisObjectClassDataStore'
+_utilities = require '../../src/publicModules/utilities'
 _ = require 'lodash'
-ValidationError = require '../../lib/models/ValidationError'
+ValidationError = require '../../src/models/ValidationError'
 
 describe 'redisObjectClassDataStore', ->
 
@@ -71,104 +71,118 @@ describe 'redisObjectClassDataStore', ->
     expect(@redisObjectClassDataStore).toEqual jasmine.any(Object)
     expect(@redisObjectClassDataStore.name).toEqual "RedisObjectClassDataStore"
 
-  describe 'attributes set in #create', ->
+  describe '#create', ->
     it 'should return a promise', ->
       createPromise = @redisObjectClassDataStore.create(integer: 1)
       expect(createPromise).toEqual jasmine.any(Promise)
 
-    it 'should add to a sorted set when the modules class has attributes with the field type of "integer"', (done) ->
-      multi = @redisObjectClassDataStore.redis.multi()
-      spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
-      spyOn(multi, 'zadd')
-      @redisObjectClassDataStore.create(integer: 1).then (createdObject) ->
-        expect(multi.zadd).toHaveBeenCalledWith('RedisObjectClassDataStore#integers', 1, createdObject.id)
-        done()
+    describe 'stored data types', ->
+      describe 'for string attributes', ->
 
-    it 'should add to an ordered list when the modules class has attributes with the field type of "integer" and is sortable', (done) ->
-      testPromise1 = @redisObjectClassDataStore.create( integer: 11 )
-      testPromise2 = @redisObjectClassDataStore.create( integer: 8 )
-      testPromise3 = @redisObjectClassDataStore.create( integer: 10 )
-      testPromise4 = @redisObjectClassDataStore.create( integer: 9 )
-      Promise.all([testPromise1,testPromise2,testPromise3,testPromise4]).done (testObjectArray) =>
-        test1Id = testObjectArray[0].id
-        test2Id = testObjectArray[1].id
-        test3Id = testObjectArray[2].id
-        test4Id = testObjectArray[3].id
-        @redis.zrange "RedisObjectClassDataStore#integers", 0, -1, (error, list) ->
-          expect(list).toEqual [test2Id, test4Id, test3Id, test1Id]
-          done()
+        describe 'where identifiable is true', ->
+          it 'adds to a key-value pair', (done) ->
+            multi = @redisObjectClassDataStore.redis.multi()
+            spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
+            spyOn(multi, 'set')
+            @redisObjectClassDataStore.create(identifier: 'identifierValue').then (createdObject) ->
+              expect(multi.set).toHaveBeenCalledWith('RedisObjectClassDataStore#identifier:identifierValue', createdObject.id)
+              done()
 
-    it 'should add to an ordered list when the modules class has attributes with the field type of "string" and is sortable', (done) ->
-      testPromise1 = @redisObjectClassDataStore.create( sortableString: 'd' )
-      testPromise2 = @redisObjectClassDataStore.create( sortableString: 'a' )
-      testPromise3 = @redisObjectClassDataStore.create( sortableString: 'c' )
-      testPromise4 = @redisObjectClassDataStore.create( sortableString: 'b' )
-      Promise.all([testPromise1,testPromise2,testPromise3,testPromise4]).done (testObjectArray) =>
-        test1Id = testObjectArray[0].id
-        test2Id = testObjectArray[1].id
-        test3Id = testObjectArray[2].id
-        test4Id = testObjectArray[3].id
-        @redis.zrange "RedisObjectClassDataStoreOrderedSet#sortableStrings", 0, -1, (error, list) ->
-          expect(list).toEqual [test1Id, test3Id, test4Id, test2Id]
-          done()
+        describe 'where sortable is true', ->
+          it 'adds to an ordered list', (done) ->
+            testPromise1 = @redisObjectClassDataStore.create( sortableString: 'd' )
+            testPromise2 = @redisObjectClassDataStore.create( sortableString: 'a' )
+            testPromise3 = @redisObjectClassDataStore.create( sortableString: 'c' )
+            testPromise4 = @redisObjectClassDataStore.create( sortableString: 'b' )
+            Promise.all([testPromise1,testPromise2,testPromise3,testPromise4]).done (testObjectArray) =>
+              test1Id = testObjectArray[0].id
+              test2Id = testObjectArray[1].id
+              test3Id = testObjectArray[2].id
+              test4Id = testObjectArray[3].id
+              @redis.zrange "RedisObjectClassDataStore>sortableString", 0, -1, (error, list) ->
+                expect(list).toEqual [test1Id, test3Id, test4Id, test2Id]
+                done()
 
-    it 'should add to a key-value pair when the modules class has attributes with the field type of "string" and is identifiable', (done) ->
-      multi = @redisObjectClassDataStore.redis.multi()
-      spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
-      spyOn(multi, 'set')
-      @redisObjectClassDataStore.create(identifier: 'identifierValue').then (createdObject) ->
-        expect(multi.set).toHaveBeenCalledWith('RedisObjectClassDataStore#identifier:identifierValue', createdObject.id)
-        done()
+        describe 'where searchable is true', ->
+          it 'adds to partial words sets when the modules class has attributes with the field type of "string" and is searchable', (done) ->
+            spyOn(@redisObjectClassDataStore.redis, 'zadd').and.callThrough()
+            @redisObjectClassDataStore.create(searchableText: 'Search This').then (createdObject) =>
+              calledArgs = @redisObjectClassDataStore.redis.zadd.calls.allArgs()
+              keysCalled = []
+              for call in calledArgs
+                keysCalled.push call[0]
+              expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/s')
+              expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/se')
+              expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/sea')
+              expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/sear')
+              expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/search')
+              expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/t')
+              expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/th')
+              expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/thi')
+              expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/this')
+              done()
 
-    it 'should add to partial words sets when the modules class has attributes with the field type of "string" and is searchable', (done) ->
-      spyOn(@redisObjectClassDataStore.redis, 'zadd').and.callThrough()
-      @redisObjectClassDataStore.create(searchableText: 'Search This').then (createdObject) =>
-        calledArgs = @redisObjectClassDataStore.redis.zadd.calls.allArgs()
-        keysCalled = []
-        for call in calledArgs
-          keysCalled.push call[0]
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:s')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:se')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:sea')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:sear')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:search')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:t')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:th')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:thi')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:this')
-        done()
+      describe 'for integer attributes', ->
+
+        # Integers are always sortable
+        it 'adds to a sorted set', (done) ->
+          testPromise1 = @redisObjectClassDataStore.create( integer: 11 )
+          testPromise2 = @redisObjectClassDataStore.create( integer: 8 )
+          testPromise3 = @redisObjectClassDataStore.create( integer: 10 )
+          testPromise4 = @redisObjectClassDataStore.create( integer: 9 )
+          Promise.all([testPromise1,testPromise2,testPromise3,testPromise4]).done (testObjectArray) =>
+            test1Id = testObjectArray[0].id
+            test2Id = testObjectArray[1].id
+            test3Id = testObjectArray[2].id
+            test4Id = testObjectArray[3].id
+            @redis.zrange "RedisObjectClassDataStore>integer", 0, -1, (error, list) ->
+              expect(list).toEqual [test2Id, test4Id, test3Id, test1Id]
+              done()
+
+        it 'adds to a sorted set with values', (done) ->
+          multi = @redisObjectClassDataStore.redis.multi()
+          spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
+          spyOn(multi, 'zadd')
+          @redisObjectClassDataStore.create(integer: 1).then (createdObject) ->
+            expect(multi.zadd).toHaveBeenCalledWith('RedisObjectClassDataStore>integer', 1, createdObject.id)
+            done()
 
 
-    it 'should add to a zset when the modules class has attributes with the field type of "boolean"', (done) ->
-      multi = @redisObjectClassDataStore.redis.multi()
-      spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
-      spyOn(multi, 'zadd')
-      @redisObjectClassDataStore.create(boolean: true).then (createdObject) ->
-        expect(multi.zadd).toHaveBeenCalledWith('RedisObjectClassDataStore#boolean:true', 1, createdObject.id)
-        done()
+      describe 'for boolean attributes', ->
+        it 'adds to a zset', (done) ->
+          multi = @redisObjectClassDataStore.redis.multi()
+          spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
+          spyOn(multi, 'zadd')
+          @redisObjectClassDataStore.create(boolean: true).then (createdObject) ->
+            expect(multi.zadd).toHaveBeenCalledWith('RedisObjectClassDataStore#boolean:true', 1, createdObject.id)
+            done()
 
-    it 'should add to a set when the modules class has attributes with the field type of "association" and "many" is true', (done) ->
-      @redisObjectClassDataStore.attributes =
-        linkedModel:
-          dataType: 'association'
-          many: true
-      multi = @redisObjectClassDataStore.redis.multi()
-      spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
-      spyOn(multi, 'sadd')
-      @redisObjectClassDataStore.create(linkedModel: ['linkedModelId1', 'linkedModelId2']).then (createdObject) ->
-        expect(multi.sadd).toHaveBeenCalledWith('RedisObjectClassDataStore#linkedModel:'+createdObject.id, 'linkedModelId1', 'linkedModelId2')
-        done()
+      describe 'for reference attributes', ->
 
-    it 'should NOT add to a set when the modules class has attributes with the field type of "association" and "many" is NOT true', (done) ->
-      @redisObjectClassDataStore.attributes =
-        linkedModel:
-          dataType: 'association'
-      multi = @redisObjectClassDataStore.redis.multi()
-      spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
-      spyOn(multi, 'sadd')
-      @redisObjectClassDataStore.create(linkedModel: 'linkedModelId1').then (createdObject) ->
-        expect(multi.sadd).not.toHaveBeenCalled()
-        done()
+        describe 'when many is true', ->
+          it 'adds to a set', (done) ->
+            @redisObjectClassDataStore.attributes =
+              linkedModel:
+                dataType: 'association'
+                many: true
+            multi = @redisObjectClassDataStore.redis.multi()
+            spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
+            spyOn(multi, 'sadd')
+            @redisObjectClassDataStore.create(linkedModel: ['linkedModelId1', 'linkedModelId2']).then (createdObject) ->
+              expect(multi.sadd).toHaveBeenCalledWith('RedisObjectClassDataStore#linkedModel:'+createdObject.id, 'linkedModelId1', 'linkedModelId2')
+              done()
+
+        describe 'when many is not true', ->
+          it 'does not add to a set', (done) ->
+            @redisObjectClassDataStore.attributes =
+              linkedModel:
+                dataType: 'association'
+            multi = @redisObjectClassDataStore.redis.multi()
+            spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
+            spyOn(multi, 'sadd')
+            @redisObjectClassDataStore.create(linkedModel: 'linkedModelId1').then (createdObject) ->
+              expect(multi.sadd).not.toHaveBeenCalled()
+              done()
 
 
   describe '#find', ->
@@ -1359,7 +1373,7 @@ describe 'redisObjectClassDataStore', ->
     it 'should update the relevant sorted set when an integer field is updated', (done) ->
       testObjectPromise = @redisObjectClassDataStore.update @testObj.id, integer: 9
       testObjectPromise.done (obj) =>
-        @redisObjectClassDataStore.redis.zrangebyscore 'RedisObjectClassDataStore#integers', 0, 10, 'withscores', (err, res) =>
+        @redisObjectClassDataStore.redis.zrangebyscore 'RedisObjectClassDataStore>integer', 0, 10, 'withscores', (err, res) =>
           expect(res).toEqual [@testObj.id, '9']
           done()
 
@@ -1412,21 +1426,21 @@ describe 'redisObjectClassDataStore', ->
         keysCalled = []
         for call in calledArgs
           keysCalled.push call[0]
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:s')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:se')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:sea')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:sear')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:search')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:t')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:th')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:thi')
-        expect(keysCalled).toContain('RedisObjectClassDataStore#words:searchableText:this')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/s')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/se')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/sea')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/sear')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/search')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/t')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/th')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/thi')
+        expect(keysCalled).toContain('RedisObjectClassDataStore#searchableText/this')
         done()
 
     it 'should update the relevant sorted set when a sortable string is updated', (done) ->
       testObjectPromise = @redisObjectClassDataStore.update @testObj.id, sortableString: 'second'
       testObjectPromise.done (obj) =>
-        @redis.zrange "RedisObjectClassDataStoreOrderedSet#sortableStrings", 0, -1, (error, list) =>
+        @redis.zrange "RedisObjectClassDataStore>sortableString", 0, -1, (error, list) =>
           expect(list).toEqual [@testObj.id]
           done()
 
