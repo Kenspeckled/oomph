@@ -14,10 +14,15 @@ describe 'redisObjectClassDataStore', ->
     @redis.on "ready", =>
       @redis.flushdb()
       done()
-    @redisObjectClassDataStore = redisObjectClassDataStore
+    @redisObjectClassDataStore = _.clone redisObjectClassDataStore
     @redisObjectClassDataStore.name = 'RedisObjectClassDataStore'
     @redisObjectClassDataStore.prototype = null
     @redisObjectClassDataStore.redis = @redis
+
+    @referenceModel = _.clone redisObjectClassDataStore
+    @referenceModel.name = 'Reference'
+    @referenceModel.prototype = null
+    @referenceModel.redis = @redis
 
   beforeEach ->
     @redisObjectClassDataStore.attributes =
@@ -41,10 +46,12 @@ describe 'redisObjectClassDataStore', ->
         dataType: 'string'
         identifiable: true
       reference:
-        dataType: 'association'
+        dataType: 'reference'
+        referenceModelName: 'Reference'
       manyReferences:
-        dataType: 'association'
+        dataType: 'reference'
         many: true
+        referenceModelName: 'ManyReferences'
       sortableString:
         dataType: 'string'
         sortable: true
@@ -163,26 +170,43 @@ describe 'redisObjectClassDataStore', ->
           it 'adds to a set', (done) ->
             @redisObjectClassDataStore.attributes =
               linkedModel:
-                dataType: 'association'
+                dataType: 'reference'
                 many: true
+                referenceModelName: 'LinkedModel'
             multi = @redisObjectClassDataStore.redis.multi()
             spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
             spyOn(multi, 'sadd')
             @redisObjectClassDataStore.create(linkedModel: ['linkedModelId1', 'linkedModelId2']).then (createdObject) ->
-              expect(multi.sadd).toHaveBeenCalledWith('RedisObjectClassDataStore#linkedModel:'+createdObject.id, 'linkedModelId1', 'linkedModelId2')
+              expect(multi.sadd).toHaveBeenCalledWith('RedisObjectClassDataStore:' + createdObject.id + '#LinkedModelRefs', 'linkedModelId1', 'linkedModelId2')
+              expect(multi.sadd).toHaveBeenCalledWith('LinkedModel:linkedModelId1#RedisObjectClassDataStoreRefs', createdObject.id)
+              expect(multi.sadd).toHaveBeenCalledWith('LinkedModel:linkedModelId2#RedisObjectClassDataStoreRefs', createdObject.id)
               done()
 
         describe 'when many is not true', ->
           it 'does not add to a set', (done) ->
             @redisObjectClassDataStore.attributes =
               linkedModel:
-                dataType: 'association'
+                dataType: 'reference'
+                referenceModelName: 'Reference'
             multi = @redisObjectClassDataStore.redis.multi()
             spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
             spyOn(multi, 'sadd')
             @redisObjectClassDataStore.create(linkedModel: 'linkedModelId1').then (createdObject) ->
               expect(multi.sadd).not.toHaveBeenCalled()
               done()
+
+          it 'stores the reference id', (done) ->
+            @referenceModel.attributes =
+              secondId:
+                dataType: 'string'
+            @redisObjectClassDataStore.attributes =
+              linkedModel:
+                dataType: 'reference'
+                referenceModelName: 'Reference'
+            @referenceModel.create(secondId: 'id1').done (ref1) =>
+              @redisObjectClassDataStore.create(linkedModel: ref1.id).then (createdObject) ->
+                expect(createdObject.linkedModel).toEqual ref1 
+                done()
 
 
   describe '#find', ->
@@ -208,8 +232,8 @@ describe 'redisObjectClassDataStore', ->
 
     it 'should reject if no object is found', (done) ->
       findPromise = @redisObjectClassDataStore.find('testNotFound')
-      findPromise.done (returnValue) ->
-        expect(returnValue).toEqual false
+      findPromise.catch (error) ->
+        expect(error).toEqual new Error "Not Found"
         done()
 
     it 'should create an object of the same class as the module owner', (done) ->
@@ -223,73 +247,48 @@ describe 'redisObjectClassDataStore', ->
           expect(returnValue.integer).toEqual jasmine.any(Number)
           done()
 
-    it 'should return the association id when many is false and preloadModel is not defined', (done) ->
+    it 'should return the reference id when many is false', (done) ->
+      @referenceModel.attributes =
+        secondId:
+          dataType: 'string'
       @redisObjectClassDataStore.attributes =
-        associated:
-          dataType: 'association'
+        referenced:
+          dataType: 'reference'
           many: false
-      testProps =  associated: 'id1'
-      @redisObjectClassDataStore.create(testProps).then (createdObject) =>
-        findPromise = @redisObjectClassDataStore.find(createdObject.id)
-        findPromise.done (foundObj) ->
-          expect(foundObj.associated).toEqual 'id1'
-          done()
+          referenceModelName: 'Reference'
+      createReferencePromise =  @referenceModel.create(secondId: 'id1')
+      createReferencePromise.then (ref1) =>
+        testProps =  referenced: ref1.id
+        @redisObjectClassDataStore.create(testProps).then (createdObject) =>
+          findPromise = @redisObjectClassDataStore.find(createdObject.id)
+          findPromise.done (foundObj) ->
+            expect(foundObj.referenced).toEqual ref1
+            done()
 
-    it 'should return an array of association ids when many is true and preloadModel is not defined', (done) ->
-      #FIXME - this test is not like our use case
+    it 'should return an array of reference ids when many is true', (done) ->
+      @referenceModel.attributes =
+        secondId:
+          dataType: 'string'
       @redisObjectClassDataStore.attributes =
-        associated:
-          dataType: 'association'
+        referenceTest:
+          dataType: 'reference'
+          referenceModelName: 'Reference'
           many: true
-      testProps =  associated: ['id1', 'id2', 'id3']
-      @redisObjectClassDataStore.create(testProps).then (createdObject) =>
-        findPromise = @redisObjectClassDataStore.find(createdObject.id)
-        findPromise.done (foundObj) ->
-          expect(foundObj.associated).toContain 'id1'
-          expect(foundObj.associated).toContain 'id2'
-          expect(foundObj.associated).toContain 'id3'
-          expect(foundObj.associated.length).toEqual 3
-          done()
-
-    it 'should return the association object when many is false and preloadModel is defined', (done) ->
-      pending()
-      #@redisObjectClassDataStore.attributes =
-      #  associated:
-      #    dataType: 'association'
-      #    many: false
-      #    preloadModel: @differentORM
-      #expectedAssociatedObject = null
-      #associationCreatePromise = @differentORM.create(url: 'associatedProduct')
-      #createORMPromise = associationCreatePromise.then (associatedObject) =>
-      #  testProps =  associated: associatedObject.id
-      #  expectedAssociatedObject = associatedObject
-      #  @redisObjectClassDataStore.create(testProps)
-      #createORMPromise.then (createdObject) =>
-      #  findPromise = @redisObjectClassDataStore.find(createdObject.id)
-      #  findPromise.done (foundObj) ->
-      #    expect(foundObj.associated).toEqual expectedAssociatedObject
-      #    done()
-
-    it 'should return an array of association objects when many is true and preloadModel is defined', (done) ->
-      pending()
-      #associationPromises = []
-      #associationPromises.push @differentORM.create(url: 'associatedProduct1')
-      #associationPromises.push @differentORM.create(url: 'associatedProduct2')
-      #associationPromises.push @differentORM.create(url: 'associatedProduct3')
-      #@redisObjectClassDataStore.attributes =
-      #  associated:
-      #    dataType: 'association'
-      #    many: true
-      #    preloadModel: @differentORM
-      #Promise.all(associationPromises).then (associatedObjects) =>
-      #  testProps =  associated: _.map(associatedObjects, 'id')
-      #  @redisObjectClassDataStore.create(testProps).then (createdObject) =>
-      #    findPromise = @redisObjectClassDataStore.find(createdObject.id)
-      #    findPromise.done (foundObj) ->
-      #      expect(foundObj.associated).toContain associatedObjects[0]
-      #      done()
-
-
+      ref1 = @referenceModel.create(secondId: 'id1')
+      ref2 = @referenceModel.create(secondId: 'id2')
+      ref3 = @referenceModel.create(secondId: 'id3')
+      createReferencesPromise = Promise.all([ref1, ref2, ref3])
+      createReferencesPromise.done (referencesObjects) =>
+        referenceIds = _.map referencesObjects, 'id'
+        testProps =  referenceTest: referenceIds, url: 'new'
+        @redisObjectClassDataStore.create(testProps).then (createdObject) =>
+          findPromise = @redisObjectClassDataStore.find(createdObject.id)
+          findPromise.done (foundObj) ->
+            expect(foundObj.referenceTest).toContain referencesObjects[0]
+            expect(foundObj.referenceTest).toContain referencesObjects[1]
+            expect(foundObj.referenceTest).toContain referencesObjects[2]
+            expect(foundObj.referenceTest.length).toEqual 3
+            done()
 
   describe '#findBy', ->
     it 'should return a promise', ->
@@ -314,8 +313,8 @@ describe 'redisObjectClassDataStore', ->
 
     it 'should reject if no object is found', (done) ->
       findByPromise = @redisObjectClassDataStore.findBy(url: 'urlNotFound')
-      findByPromise.done (returnValue) ->
-        expect(returnValue).toEqual false
+      findByPromise.catch (returnValue) ->
+        expect(returnValue).toEqual new Error "Not Found" 
         done()
 
   describe '#where', ->
@@ -1350,7 +1349,7 @@ describe 'redisObjectClassDataStore', ->
         searchableText: "Search this"
         sortableString: "first"
         sortableInteger: 1
-      @redisObjectClassDataStore.create(testProps).then (testObject) =>
+      @redisObjectClassDataStore.create(testProps).done (testObject) =>
         @testObj = testObject
         done()
 
@@ -1359,9 +1358,9 @@ describe 'redisObjectClassDataStore', ->
       expect(testObjectPromise).toEqual jasmine.any(Promise)
 
     it 'should throw an error when the id is not found', (done) ->
-      testObjectPromise = @redisObjectClassDataStore.update 'invalidID', url: 'uniqueValue'
+      testObjectPromise = @redisObjectClassDataStore.update 'invalidID', url: 'takenURL'
       testObjectPromise.catch (error) ->
-        expect(error).toEqual new Error "Id not found"
+        expect(error).toEqual new Error "Not Found"
         done()
 
     it 'should update the object when a change is made', (done) ->
@@ -1389,21 +1388,21 @@ describe 'redisObjectClassDataStore', ->
           expect(res.length).toEqual 2
           done()
 
-    xit 'should add to a set when an association field is updated', (done) ->
+    xit 'should add to a set when an reference field is updated', (done) ->
       testObjectPromise = @redisObjectClassDataStore.update @testObj.id, manyReferences: ['editedId1']
       testObjectPromise.done (obj) =>
-        @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore#manyReferences:' + @testObj.id, (err, members) ->
+        @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore:' + @testObj.id +'#ManyReferenceRefs', (err, members) ->
           expect(members).toContain 'editedId1'
           expect(members.length).toEqual 4
           done()
 
-    xit 'should have all associated objects when an association field is updated', (done) ->
+    xit 'should have all referenced objects when an reference field is updated', (done) ->
       testObjectPromise = @redisObjectClassDataStore.update @testObj.id, manyReferences: ['editedId1']
       testObjectPromise.done (obj) =>
         expect(obj.manyReferences.length).toEqual 4
         done()
 
-    it 'should not save a many association field to the database', (done) ->
+    it 'should not save a many reference field to the database', (done) ->
       pending()
 
 
@@ -1445,7 +1444,7 @@ describe 'redisObjectClassDataStore', ->
           done()
 
     it 'should update the object', (done) ->
-      updateProps = { one: 1, integer: 2, identifier: 'newidentifier', reference: 'newreference', sortableString: 'second', sortableInteger: 2, searchableText: 'new Search this', boolean: false }
+      updateProps = { one: 1, integer: 2, identifier: 'newidentifier', sortableString: 'second', sortableInteger: 2, searchableText: 'new Search this', boolean: false }
       _.assign(@testObj, updateProps)
       testObjectPromise = @redisObjectClassDataStore.update @testObj.id, updateProps
       testObjectPromise.done (obj) =>
@@ -1454,10 +1453,10 @@ describe 'redisObjectClassDataStore', ->
           done()
 
     describe '"remove_" prefix', ->
-      it 'should remove values from a set when an association is updated', (done) ->
+      it 'should remove values from a set when an reference is updated', (done) ->
         testObjectPromise = @redisObjectClassDataStore.update @testObj.id, remove_manyReferences: ['two2', '2']
         testObjectPromise.done (obj) =>
-          @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore#manyReferences:' + @testObj.id, (err, members) ->
+          @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore:' + @testObj.id + '#ManyReferencesRefs', (err, members) ->
             expect(members).toContain 'one1'
             expect(members).toContain 'three3'
             expect(members.length).toEqual 2

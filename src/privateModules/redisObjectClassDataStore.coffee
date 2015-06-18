@@ -37,15 +37,20 @@ generateUniqueId = ->
             uniqueId = true
             resolve(id)
 
-createObject = (newObjectProps) ->
-  props = {}
-  obj = Object.create(@prototype)
-  obj.createdAt = idToCreatedAtDate(newObjectProps.id) if newObjectProps.id
-  for key, value of newObjectProps
-    if @attributes[key]
-      obj[key] = value
+createObjectFromHash = (hash,modelPrototype) ->
+  obj = {}
+  Object.create(modelPrototype) if modelPrototype
+  return false if !hash
+  obj.createdAt = idToCreatedAtDate(hash.id) if hash.id
+  for key, value of hash
+    plainKey = key.replace /\[\w\]$/, ''
+    propertyCastType = key.match /\[(\w)\]$/
+    if propertyCastType
+      if propertyCastType[1] == 'b' # cast as boolean
+        obj[plainKey] = (value == 'true')
+      else if propertyCastType[1] == 'i' # cast as integer 
+        obj[plainKey] = parseInt(value)
     else
-      #FIXME: Should attributes be able to be assigned if not defined?
       obj[key] = value
   obj
 
@@ -186,11 +191,23 @@ writeAttributes = (props) ->
       resolve props.id
   writePromise = idPromise.then (id) ->
     props.id = id
-    objectIdentifier = self.name + ":" + props.id
+    storableProps = _.clone props
     new Promise (resolve) ->
-      self.redis.hmset objectIdentifier, props, (err, res) ->
-        resolve()
-  indexPromise = writePromise.then ->
+      for attr, obj of self.attributes
+        continue if storableProps[attr] == undefined #props[attr] can be false for boolean dataType
+        switch obj.dataType
+          when 'integer'
+            storableProps[attr + '[i]'] = storableProps[attr]
+            delete storableProps[attr]
+          when 'boolean'
+            storableProps[attr + '[b]'] = storableProps[attr]
+            delete storableProps[attr]
+          when 'reference'
+            if obj.many
+              storableProps[attr] = true
+      self.redis.hmset self.name + ":" + props.id, storableProps, (err, res) ->
+        resolve(storableProps)
+  indexPromise = writePromise.then (storedProps) ->
     indexingPromises = []
     multi = self.redis.multi()
     indexPromiseFn = (sortedSetName, attributeName) ->
@@ -204,7 +221,7 @@ writeAttributes = (props) ->
     for attr, obj of self.attributes
       continue if props[attr] == undefined #props[attr] can be false for boolean dataType
       value = props[attr]
-      switch obj['dataType']
+      switch obj.dataType
         when 'integer'
           sortedSetName = self.name + ">" + attr
           multi.zadd sortedSetName, parseInt(value), props.id #sorted set
@@ -222,10 +239,12 @@ writeAttributes = (props) ->
         when 'boolean'
           if _.includes([true, 'true', false, 'false'], value)
             multi.zadd self.name + "#" + attr + ":" + value, 1, props.id #set
-        when 'association'
+        when 'reference'
           if obj.many
             multipleValues = value.split(",")
-            multi.sadd self.name + "#" + attr + ":" +  props.id, multipleValues...
+            multi.sadd self.name + ":" +  props.id + "#" + obj.referenceModelName + 'Refs', multipleValues...
+            multipleValues.forEach (vid) ->
+              multi.sadd obj.referenceModelName + ":" +  vid + "#" + self.name + 'Refs', props.id
         else
           if obj['dataType'] != null
             reject new Error "Unrecognised dataType " + obj.dataType
@@ -233,7 +252,7 @@ writeAttributes = (props) ->
       multi.exec ->
         resolve Promise.all(indexingPromises)
   indexPromise.then ->
-    return props
+    return props 
 
 clearUniqueQueuedIds = ->
   @redis.del @name + '#uniqueQueuedIds'
@@ -278,6 +297,7 @@ addToWriteQueue = (props) ->
       return processWriteQueue.apply(self)
     , 100
     new Promise (resolve) ->
+      #FIXME: need to remove listeners
       publishSubscribe.listen.apply self, ["attributes_written_"+tmpId, (obj) -> resolve(obj)]
 
 
@@ -339,51 +359,48 @@ redisObjectDataStore =
 
   # FIXME: In need of refactor - lots of code smell
   find: (id) ->
-    findAssociationPromiseObjects = []
-    foundPromise = new Promise (resolve, reject) =>
-      @redis.hgetall @name + ":" + id, (error, props) =>
-        if props
-          for propertyName in Object.keys(props)
-            propertyValue = props[propertyName]
-            if @attributes[propertyName]
-              switch @attributes[propertyName].dataType
-                when 'integer'
-                  props[propertyName] = parseInt(propertyValue)
-                when 'boolean'
-                  props[propertyName] = true if _.includes([true, 'true'], propertyValue)
-                  props[propertyName] = false if _.includes([false, 'false'], propertyValue)
-                when 'association'
-                  propertyValue = propertyValue.split ','
-                  if @attributes[propertyName].many
-                    props[propertyName] = propertyValue
-                  else
-                    props[propertyName] = propertyValue[0]
-                  if @attributes[propertyName].preloadModel
-                    _.each propertyValue, (v) =>
-                      associationPromise = new Promise (res) =>
-                        Model = @attributes[propertyName].preloadModel
-                        Model.find(v).then (foundObj) ->
-                          res foundObj
-                      findAssociationPromiseObjects.push propertyName: propertyName, promise: associationPromise, many: @attributes[propertyName].many
-          obj = createObject.apply(this, [props])
-          resolve obj
+    self = this
+    referencePromises = []
+    getHash = new Promise (resolve, reject) ->
+      self.redis.hgetall self.name + ":" + id, (error, hash) ->
+        if !hash
+          reject new Error "Not Found"
         else
-          resolve false
-    foundPromise.then (foundObj) ->
-      return foundObj if _.isEmpty(findAssociationPromiseObjects)
-      _.each findAssociationPromiseObjects, (associationPromiseObj) ->
-        if associationPromiseObj.many
-          foundObj[associationPromiseObj.propertyName] = []
-        else
-          foundObj[associationPromiseObj.propertyName] = null
-      assignAssociationsPromises = _.map findAssociationPromiseObjects, (associationPromiseObj) ->
-        associationPromiseObj.promise.then (associationObj) ->
-          if associationPromiseObj.many
-            foundObj[associationPromiseObj.propertyName].push associationObj if associationObj
+          resolve(hash)
+    modifyHashPromise = getHash.then (hash) ->
+      for propertyName in Object.keys(hash)
+        propertyValue = hash[propertyName]
+        attrSettings = self.attributes[propertyName]
+        if attrSettings and attrSettings.dataType == 'reference'
+          if attrSettings.many
+            getReferenceIds = new Promise (resolve, reject) ->
+              hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName}
+              referenceKey = self.name + ':' + id + '#' + hashObj.referenceModelName + 'Refs'
+              self.redis.smembers referenceKey, (err, ids) ->
+                resolve {ids, hashObj}
+            referencePromise = getReferenceIds.then (obj) ->
+              getObjects = _.map obj.ids, (id) ->
+                new Promise (resolve, reject) ->
+                  self.redis.hgetall obj.hashObj.referenceModelName + ':' + id, (err, hash) ->
+                    resolve createObjectFromHash hash
+              Promise.all(getObjects).then (arr) ->
+                obj.hashObj.referenceValue = arr
+                obj.hashObj
+            referencePromises.push referencePromise
           else
-            foundObj[associationPromiseObj.propertyName] = associationObj
-      Promise.all(assignAssociationsPromises).then ->
-        return foundObj
+            hashPromise = new Promise (resolve, reject) ->
+              hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName}
+              self.redis.hgetall hashObj.referenceModelName + ':' + propertyValue, (err, hash) ->
+                hashObj.referenceValue = createObjectFromHash hash
+                resolve hashObj
+            referencePromises.push hashPromise
+          delete hash[propertyName]
+      hash
+    modifyHashPromise.then (hash) ->
+      Promise.all(referencePromises).then (referenceObjects) ->
+        _.each referenceObjects, (refObj) ->
+          hash[refObj.propertyName] = refObj.referenceValue
+        createObjectFromHash(hash, self.prototype)
 
 
   findBy: (option) ->
@@ -478,21 +495,18 @@ redisObjectDataStore =
           sortedSetKeys.push name: integerSortedSetName
         when 'boolean'
           sortedSetKeys.push  name: self.name + "#" + option + ":" + optionValue
-        #when 'association'
-          ## FIXME: A bit of a mess...
-          #assocationClass = @attributes[option].preloadModel
-          #if assocationClass 
-          #  pluralAttr = pluralise(self.name.toLowerCase()) 
-          #  if (assocationClass.getName().toLowerCase() == option)
-          #    if assocationClass.attributes[pluralAttr] and assocationClass.attributes[pluralAttr].many
-          #      manySetName = assocationClass.getName() + "#" + pluralAttr + ":" + optionValue
-          #      sortedSetKeys.push  name: manySetName
+        #when 'reference'
+        #  referenceModelName = @attributes[option].referenceModelName
+        #  if referenceModelName and @attributes[option].many
+        #    console.log 'option', option
+        #    console.log 'optionValue', optionValue
+        #  #sortedSetKeys.push name: referenceModelName
     if !whereConditionPromise
       whereConditionPromise = new Promise (r) -> r()
     prepareWhereConditionPromise = whereConditionPromise.then -> keywordSearchPromise
     prepareWhereConditionPromise.then () ->
       idsKeyPromise = new Promise (resolve) ->
-        intersectKey = 'temporaryIntersectSet:'+_utilities.randomString(5)
+        intersectKey = 'temporaryIntersectSet:' + _utilities.randomString(5)
         sortedSetKeyNames = _.map(sortedSetKeys, 'name')
         self.redis.zinterstore intersectKey, sortedSetKeys.length, sortedSetKeyNames..., (err,numberOfResults) ->
           self.redis.expire intersectKey, 1 # FIXME: this shoud be cached
@@ -505,7 +519,7 @@ redisObjectDataStore =
         _.each args.facets, (f) ->
           facetResults[f] = []
           facetsPromises.push new Promise (resolve) ->
-            self.redis.sort idKey, 'by', 'nosort', 'get', self.name+':*->'+f, (err, facetList) ->
+            self.redis.sort idKey, 'by', 'nosort', 'get', self.name + ':*->' + f, (err, facetList) ->
               counts = _.countBy facetList, (p) -> p
               for x in Object.keys(counts)
                 facetResults[f].push item: x, count: counts[x]
@@ -542,58 +556,61 @@ redisObjectDataStore =
 
 
   update: (id, updateFields, skipValidation) ->
+    self = this
     updateFieldsDiff = { id: id } #need to send existing id to stop new id being generated
     callbackPromises = []
-    multi = @redis.multi()
-    getOriginalObjPromise = @find(id).then (originalObj) ->
+    multi = self.redis.multi()
+    getOriginalObjPromise = self.find(id).then (originalObj) ->
       if !originalObj
-        throw new Error "Id not found"
+        throw new Error "Not Found"
       return originalObj
-    getOriginalObjPromise.then (originalObj) =>
+    getOriginalObjPromise.then (originalObj) ->
       for attr in Object.keys(updateFields)
         remove = false
         if attr.match(/^remove_/)
           remove = true
           removeValue = updateFields[attr]
           attr = attr.replace(/^remove_/, '')
-        orderedSetName = @name + '>' + attr
+        orderedSetName = self.name + '>' + attr
         originalValue = originalObj[attr]
         newValue = updateFields[attr]
         # if there is an actual change or it's a boolean
-        if newValue != originalValue or _.includes([true, 'true', false, 'false'], newValue)
+        if newValue != originalValue or _.includes([true, 'true', false, 'false'], newValue) or removeValue
           updateFieldsDiff[attr] = newValue
           delete updateFieldsDiff[attr] if remove
-          obj = @attributes[attr]
+          obj = self.attributes[attr]
           return if !obj
           switch obj.dataType
             when 'integer'
-              sortedSetName = @name + '>' + attr
+              sortedSetName = self.name + '>' + attr
               multi.zrem sortedSetName, id
             when 'text'
               if obj.searchable
-                callbackPromises.push removeIndexedSearchableString.apply(this, [attr, originalValue, id])
+                callbackPromises.push removeIndexedSearchableString.apply(self, [attr, originalValue, id])
             when 'string'
               if obj.sortable
                 multi.zrem orderedSetName, id
               if obj.searchable
-                callbackPromises.push removeIndexedSearchableString.apply(this, [attr, originalValue, id])
+                callbackPromises.push removeIndexedSearchableString.apply(self, [attr, originalValue, id])
               if obj.identifiable
-                multi.del @name + "#" + attr + ":" + originalValue
-            when 'association'
-              if obj.many == true 
-                if remove == true
-                  multi.srem @name + "#" + attr + ":" + id, removeValue...
+                multi.del self.name + "#" + attr + ":" + originalValue
+            when 'reference'
+              if obj.many
+                if remove
+                  multi.srem self.name + ":" +  id + "#" + obj.referenceModelName + 'Refs', removeValue...
+                  removeValue.forEach (vid) ->
+                    multi.srem obj.referenceModelName + ":" +  vid + "#" + self.name + 'Refs', id
                 else
                   originalIds = _.map(originalValue, 'id')
                   newValue = _.union(originalIds, newValue)
                   unless _.isEqual(newValue, originalValue) 
                     updateFieldsDiff[attr] = newValue 
             when 'boolean'
-              multi.zrem @name + "#" + attr + ":" + originalValue, id
-      multiPromise = new Promise (resolve, reject) =>
-        multi.exec =>
-          sendAttributesForSaving.apply(this, [updateFieldsDiff, skipValidation]).then (writtenObj) =>
-            resolve @find(writtenObj.id)
+              multi.zrem self.name + "#" + attr + ":" + originalValue, id
+      multiPromise = new Promise (resolve, reject) ->
+        multi.exec ->
+          sendAttributesForSaving.apply(self, [updateFieldsDiff, skipValidation]).then (writtenObj) ->
+            resolve self.find(writtenObj.id)
           , (error) ->
             reject error
       multiPromise.then (obj) ->
