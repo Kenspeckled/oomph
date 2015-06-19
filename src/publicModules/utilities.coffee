@@ -1,3 +1,4 @@
+_ = require 'lodash'
 pluralize = require 'pluralize'
 
 Promise = require 'promise'
