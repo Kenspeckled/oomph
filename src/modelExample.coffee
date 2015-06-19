@@ -10,7 +10,6 @@ class Engine extends ObjectOrientedModel
     modelSpec:
       dataType: 'reference'
       referenceModelName: 'ModelSpec'
-      preload: true
     horsePower:
       dataType: 'integer'
     parts:
@@ -29,6 +28,7 @@ class Engine extends ObjectOrientedModel
 # 'Engine>id' => [ 1 => 'engine1']
 # 'Engine>manufacturingId' => [ 1 => 'engine1']
 # 'ModelSpec:[modelSpecId]' => { modelName: 'Jaguar', modelDetails: 'This is a model desciption', modelID: '123234'}
+# 'ModelSpec:[modelSpecId]#EngineRefs' => [ 'engine1']
 # 'Engine>horsePower' => [ 5 => 'engine1']
 # 'Engine:[engineId]#PartRefs' => [ '12345', '123545', '351324' ]
 # 'Part:[partId]#EngineRefs' => [ 'engine1', 'engine2' ]

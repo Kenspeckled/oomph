@@ -245,6 +245,8 @@ writeAttributes = (props) ->
             multi.sadd self.name + ":" +  props.id + "#" + obj.referenceModelName + 'Refs', multipleValues...
             multipleValues.forEach (vid) ->
               multi.sadd obj.referenceModelName + ":" +  vid + "#" + self.name + 'Refs', props.id
+          else
+            multi.sadd obj.referenceModelName + ":" +  value + "#" + self.name + 'Refs', props.id
         else
           if obj['dataType'] != null
             reject new Error "Unrecognised dataType " + obj.dataType
@@ -427,7 +429,7 @@ redisObjectDataStore =
     args.sortDirection.toLowerCase()
     args.limit ||= null
     args.offset ||= null
-    if args.sortBy == 'rand'
+    if args.sortBy == 'random'
       start = 0
       end = -1
     else
@@ -438,7 +440,7 @@ redisObjectDataStore =
       start = if args.limit > 0 then end - (args.limit - 1) else 0
     sortedSetKeys = []
     unionSortedSetKeys = []
-    if args.sortBy == 'rand'
+    if args.sortBy == 'random'
       sortedSetKeys.push name: self.name + '>id'
     else if args.sortBy != 'relevance'
       sortedSetKeys.push name: self.name + '>' + args.sortBy
@@ -463,6 +465,7 @@ redisObjectDataStore =
           weight = (if weightOptions[field] and weightOptions[field].weight then weightOptions[field].weight else 1)
           for keyword in keywords
             sortedSetKeys.push name: self.name + "#" + field + "/" + keyword, weight: weight
+    whereConditionPromises = []
     for option in Object.keys(args)
       optionValue = args[option]
       if not @attributes[option]
@@ -488,28 +491,48 @@ redisObjectDataStore =
           if optionValue.equalTo
             minValue = optionValue.equalTo
             maxValue = optionValue.equalTo
-          whereConditionPromise = new Promise (resolve) ->
+          whereConditionPromises.push new Promise (resolve) ->
             createIntegerSubset.apply(self, [integerSortedSetName, tempIntegerKey, minValue, maxValue]).then ->
               resolve()
           sortedSetKeys.push name: tempIntegerKey
           sortedSetKeys.push name: integerSortedSetName
         when 'boolean'
           sortedSetKeys.push  name: self.name + "#" + option + ":" + optionValue
-        #when 'reference'
-        #  referenceModelName = @attributes[option].referenceModelName
-        #  if referenceModelName and @attributes[option].many
-        #    console.log 'option', option
-        #    console.log 'optionValue', optionValue
-        #  #sortedSetKeys.push name: referenceModelName
-    if !whereConditionPromise
-      whereConditionPromise = new Promise (r) -> r()
-    prepareWhereConditionPromise = whereConditionPromise.then -> keywordSearchPromise
+        when 'reference'
+          referenceModelName = @attributes[option].referenceModelName
+          if referenceModelName 
+            if @attributes[option].many
+              if optionValue.includesAllOf
+                _.each optionValue.includesAllOf, (id) ->
+                  sortedSetKeys.push name: referenceModelName + ':' + id + '#' + self.name + 'Refs'
+              if optionValue.includesAnyOf
+                _.each optionValue.includesAnyOf, (id) ->
+                  unionSortedSetKeys.push name: referenceModelName + ':' + id + '#' + self.name + 'Refs'
+            else
+              if optionValue.anyOf
+                _.each optionValue.anyOf, (id) ->
+                  unionSortedSetKeys.push name: referenceModelName + ':' + id + '#' + self.name + 'Refs'
+              else
+                sortedSetKeys.push name: referenceModelName + ':' + optionValue + '#' + self.name + 'Refs'
+    prepareWhereConditionPromise = Promise.all(whereConditionPromises).then -> 
+      if _.isEmpty(unionSortedSetKeys)
+        keywordSearchPromise
+      else
+        unionPromise = new Promise (resolve) ->
+          unionSortedSetKeyNames = _.map(unionSortedSetKeys, 'name')
+          unionKey = 'temporaryUnionSet:' + _utilities.randomString(24)
+          self.redis.zunionstore unionKey, unionSortedSetKeys.length, unionSortedSetKeyNames..., (err,numberofresults) ->
+            self.redis.expire unionKey, 5 # FIXME: this shoud be cached
+            sortedSetKeys.push name: unionKey
+            resolve()
+        unionPromise.then ->
+          keywordSearchPromise
     prepareWhereConditionPromise.then () ->
       idsKeyPromise = new Promise (resolve) ->
-        intersectKey = 'temporaryIntersectSet:' + _utilities.randomString(5)
+        intersectKey = 'temporaryIntersectSet:' + _utilities.randomString(24)
         sortedSetKeyNames = _.map(sortedSetKeys, 'name')
         self.redis.zinterstore intersectKey, sortedSetKeys.length, sortedSetKeyNames..., (err,numberOfResults) ->
-          self.redis.expire intersectKey, 1 # FIXME: this shoud be cached
+          self.redis.expire intersectKey, 5 # FIXME: this shoud be cached
           resolve({intersectKey,numberOfResults})
       matchedIdsPromise = idsKeyPromise.then (resultObj) ->
         idKey = resultObj.intersectKey
@@ -532,7 +555,7 @@ redisObjectDataStore =
               resolve {ids, totalResults, facetResults}
       matchedIdsPromise.then (resultObject) ->
         ids = resultObject.ids
-        if args.sortBy == 'rand'
+        if args.sortBy == 'random'
           if args.limit
             ids = _.sample ids, args.limit
           else
@@ -605,6 +628,9 @@ redisObjectDataStore =
                   newValue = _.union(originalIds, newValue)
                   unless _.isEqual(newValue, originalValue) 
                     updateFieldsDiff[attr] = newValue 
+              else
+                if remove
+                  multi.srem obj.referenceModelName + ":" + originalValue + "#" + self.name + 'Refs', id
             when 'boolean'
               multi.zrem self.name + "#" + attr + ":" + originalValue, id
       multiPromise = new Promise (resolve, reject) ->

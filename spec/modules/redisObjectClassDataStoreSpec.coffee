@@ -1,8 +1,8 @@
 Redis = require 'redis'
 Promise = require 'promise'
 redisObjectClassDataStore = require '../../src/privateModules/redisObjectClassDataStore'
-_utilities = require '../../src/publicModules/utilities'
 _ = require 'lodash'
+_utilities = require '../../src/publicModules/utilities'
 ValidationError = require '../../src/models/ValidationError'
 
 describe 'redisObjectClassDataStore', ->
@@ -25,6 +25,9 @@ describe 'redisObjectClassDataStore', ->
     @referenceModel.redis = @redis
 
   beforeEach ->
+    @referenceModel.attributes =
+      secondId:
+        dataType: 'string'
     @redisObjectClassDataStore.attributes =
       url:
         dataType: 'string'
@@ -51,7 +54,7 @@ describe 'redisObjectClassDataStore', ->
       manyReferences:
         dataType: 'reference'
         many: true
-        referenceModelName: 'ManyReferences'
+        referenceModelName: 'Reference'
       sortableString:
         dataType: 'string'
         sortable: true
@@ -183,29 +186,10 @@ describe 'redisObjectClassDataStore', ->
               done()
 
         describe 'when many is not true', ->
-          it 'does not add to a set', (done) ->
-            @redisObjectClassDataStore.attributes =
-              linkedModel:
-                dataType: 'reference'
-                referenceModelName: 'Reference'
-            multi = @redisObjectClassDataStore.redis.multi()
-            spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
-            spyOn(multi, 'sadd')
-            @redisObjectClassDataStore.create(linkedModel: 'linkedModelId1').then (createdObject) ->
-              expect(multi.sadd).not.toHaveBeenCalled()
-              done()
-
           it 'stores the reference id', (done) ->
-            @referenceModel.attributes =
-              secondId:
-                dataType: 'string'
-            @redisObjectClassDataStore.attributes =
-              linkedModel:
-                dataType: 'reference'
-                referenceModelName: 'Reference'
             @referenceModel.create(secondId: 'id1').done (ref1) =>
-              @redisObjectClassDataStore.create(linkedModel: ref1.id).then (createdObject) ->
-                expect(createdObject.linkedModel).toEqual ref1 
+              @redisObjectClassDataStore.create(reference: ref1.id).then (createdObject) ->
+                expect(createdObject.reference).toEqual ref1 
                 done()
 
 
@@ -248,46 +232,30 @@ describe 'redisObjectClassDataStore', ->
           done()
 
     it 'should return the reference id when many is false', (done) ->
-      @referenceModel.attributes =
-        secondId:
-          dataType: 'string'
-      @redisObjectClassDataStore.attributes =
-        referenced:
-          dataType: 'reference'
-          many: false
-          referenceModelName: 'Reference'
       createReferencePromise =  @referenceModel.create(secondId: 'id1')
       createReferencePromise.then (ref1) =>
-        testProps =  referenced: ref1.id
+        testProps =  reference: ref1.id
         @redisObjectClassDataStore.create(testProps).then (createdObject) =>
           findPromise = @redisObjectClassDataStore.find(createdObject.id)
           findPromise.done (foundObj) ->
-            expect(foundObj.referenced).toEqual ref1
+            expect(foundObj.reference).toEqual ref1
             done()
 
     it 'should return an array of reference ids when many is true', (done) ->
-      @referenceModel.attributes =
-        secondId:
-          dataType: 'string'
-      @redisObjectClassDataStore.attributes =
-        referenceTest:
-          dataType: 'reference'
-          referenceModelName: 'Reference'
-          many: true
       ref1 = @referenceModel.create(secondId: 'id1')
       ref2 = @referenceModel.create(secondId: 'id2')
       ref3 = @referenceModel.create(secondId: 'id3')
       createReferencesPromise = Promise.all([ref1, ref2, ref3])
       createReferencesPromise.done (referencesObjects) =>
         referenceIds = _.map referencesObjects, 'id'
-        testProps =  referenceTest: referenceIds, url: 'new'
+        testProps =  manyReferences: referenceIds, url: 'new'
         @redisObjectClassDataStore.create(testProps).then (createdObject) =>
           findPromise = @redisObjectClassDataStore.find(createdObject.id)
           findPromise.done (foundObj) ->
-            expect(foundObj.referenceTest).toContain referencesObjects[0]
-            expect(foundObj.referenceTest).toContain referencesObjects[1]
-            expect(foundObj.referenceTest).toContain referencesObjects[2]
-            expect(foundObj.referenceTest.length).toEqual 3
+            expect(foundObj.manyReferences).toContain referencesObjects[0]
+            expect(foundObj.manyReferences).toContain referencesObjects[1]
+            expect(foundObj.manyReferences).toContain referencesObjects[2]
+            expect(foundObj.manyReferences.length).toEqual 3
             done()
 
   describe '#findBy', ->
@@ -419,22 +387,21 @@ describe 'redisObjectClassDataStore', ->
             done()
 
     it "should default to sorting by created at time (alphabetically by id)", (done) ->
-      pending()
-      #createDelayedObj = (integer) ->
-      #  new Promise (resolve) =>
-      #    setTimeout =>
-      #      resolve @redisObjectClassDataStore.create(integer: integer)
-      #    , 10
-      #delayedCreatePromises = []
-      #for i in [0..9]
-      #  delayedCreatePromises.push createDelayedObj.apply(this, [i%2])
-      #Promise.all(delayedCreatePromises).then (createdObjectArray) =>
-      #  @redisObjectClassDataStore.where(integer: equalTo: 1).done (returnArray) ->
-      #    returnedIds = if returnArray then _.map(returnArray.ids, (x) -> x.id ) else []
-      #    sortedReturnedIds = returnedIds.sort (a,b) -> a > b
-      #    expect(returnArray.items.length).toEqual 5
-      #    expect(returnedIds).toEqual sortedReturnedIds
-      #    done()
+      createDelayedObj = (integer) ->
+        new Promise (resolve) =>
+          setTimeout =>
+            resolve @redisObjectClassDataStore.create(integer: integer)
+          , 10
+      delayedCreatePromises = []
+      for i in [0..9]
+        delayedCreatePromises.push createDelayedObj.apply(this, [i%2])
+      Promise.all(delayedCreatePromises).then (createdObjectArray) =>
+        @redisObjectClassDataStore.where(integer: equalTo: 1).done (returnArray) ->
+          returnedIds = if returnArray then _.map(returnArray.items.ids, (x) -> x.id ) else []
+          sortedReturnedIds = returnedIds.sort (a,b) -> a > b
+          expect(returnArray.items.length).toEqual 5
+          expect(returnedIds).toEqual sortedReturnedIds
+          done()
 
     describe 'arguements', ->
       describe 'integers', ->
@@ -656,10 +623,111 @@ describe 'redisObjectClassDataStore', ->
               wherePromise = @redisObjectClassDataStore.where(whereConditions)
               wherePromise.done (returnValue) =>
                 expect(returnValue.items.length).toEqual 2
-                expect(returnValue.items[0]).toEqual testobjects[1]
-                expect(returnValue.items[1]).toEqual testobjects[0]
+                expect(returnValue.items).toContain testobjects[1]
+                expect(returnValue.items).toContain testobjects[0]
                 done()
 
+      describe 'reference', ->
+        beforeEach (done) ->
+          @redisObjectClassDataStore.attributes.oneRef =
+            dataType: 'reference'
+            referenceModelName: 'Reference'
+          ref1 = @referenceModel.create(secondId: 'id1')
+          ref2 = @referenceModel.create(secondId: 'id2')
+          ref3 = @referenceModel.create(secondId: 'id3')
+          ref4 = @referenceModel.create(secondId: 'id4')
+          ref5 = @referenceModel.create(secondId: 'id5')
+          createReferencesPromise = Promise.all([ref1, ref2, ref3, ref4, ref5])
+          createTestObjectsPromise = createReferencesPromise.then (references) =>
+            @ref1Id = references[0].id
+            @ref2Id = references[1].id
+            @ref3Id = references[2].id
+            @ref4Id = references[3].id
+            @ref5Id = references[4].id
+            testPromise1 = @redisObjectClassDataStore.create( url: 'uniqueValue1', manyReferences: [@ref1Id, @ref2Id], oneRef: @ref4Id )
+            testPromise2 = @redisObjectClassDataStore.create( url: 'uniqueValue2', manyReferences: [@ref2Id], oneRef: @ref4Id )
+            testPromise3 = @redisObjectClassDataStore.create( url: 'uniqueValue3', manyReferences: [@ref1Id, @ref2Id, @ref3Id], oneRef: @ref5Id )
+            Promise.all([testPromise1,testPromise2,testPromise3])
+          createTestObjectsPromise.then (testObjects) =>
+            @testObject1 = testObjects[0]
+            @testObject2 = testObjects[1]
+            @testObject3 = testObjects[2]
+            done()
+
+        describe 'includesAllOf', ->
+          it 'returns all objects when all match', (done) ->
+            wherePromise = @redisObjectClassDataStore.where manyReferences: { includesAllOf: [@ref1Id, @ref2Id, @ref3Id] }
+            wherePromise.done (returnValue) =>
+              expect(returnValue.items.length).toEqual 1
+              expect(returnValue.items).toContain @testObject3
+              done()
+
+          it 'returns some objects when some match', (done) ->
+            wherePromise = @redisObjectClassDataStore.where manyReferences: { includesAllOf: [@ref1Id, @ref2Id] }
+            wherePromise.done (returnValue) =>
+              expect(returnValue.items.length).toEqual 2
+              expect(returnValue.items).toContain @testObject1
+              expect(returnValue.items).toContain @testObject3
+              done()
+
+          it 'returns one object when one matches', (done) ->
+            wherePromise = @redisObjectClassDataStore.where manyReferences: { includesAllOf: [@ref2Id] }
+            wherePromise.done (returnValue) =>
+              expect(returnValue.items.length).toEqual 3
+              expect(returnValue.items).toContain @testObject1
+              expect(returnValue.items).toContain @testObject2
+              expect(returnValue.items).toContain @testObject3
+              done()
+
+        describe 'includesAnyOf', ->
+          it 'returns all objects when all match', (done) ->
+            wherePromise = @redisObjectClassDataStore.where manyReferences: { includesAnyOf: [@ref3Id] }
+            wherePromise.done (returnValue) =>
+              expect(returnValue.items.length).toEqual 1
+              expect(returnValue.items).toContain @testObject3
+              done()
+
+          it 'returns some objects when some match', (done) ->
+            wherePromise = @redisObjectClassDataStore.where manyReferences: { includesAnyOf: [@ref1Id, @ref3Id] }
+            wherePromise.done (returnValue) =>
+              expect(returnValue.items.length).toEqual 2
+              expect(returnValue.items).toContain @testObject1
+              expect(returnValue.items).toContain @testObject3
+              done()
+
+          it 'returns one object when one matches', (done) ->
+            wherePromise = @redisObjectClassDataStore.where manyReferences: { includesAnyOf: [@ref2Id] }
+            wherePromise.done (returnValue) =>
+              expect(returnValue.items.length).toEqual 3
+              expect(returnValue.items).toContain @testObject1
+              expect(returnValue.items).toContain @testObject2
+              expect(returnValue.items).toContain @testObject3
+              done()
+
+        describe 'non-many', ->
+          it 'returns all objects when all match', (done) ->
+            wherePromise = @redisObjectClassDataStore.where oneRef: { anyOf: [@ref4Id, @ref5Id] }
+            wherePromise.done (returnValue) =>
+              expect(returnValue.items.length).toEqual 3
+              expect(returnValue.items).toContain @testObject1
+              expect(returnValue.items).toContain @testObject2
+              expect(returnValue.items).toContain @testObject3
+              done()
+
+          it 'returns some objects when some match', (done) ->
+            wherePromise = @redisObjectClassDataStore.where oneRef: @ref4Id
+            wherePromise.done (returnValue) =>
+              expect(returnValue.items.length).toEqual 2
+              expect(returnValue.items).toContain @testObject1
+              expect(returnValue.items).toContain @testObject2
+              done()
+
+          it 'returns one object when one matches', (done) ->
+            wherePromise = @redisObjectClassDataStore.where oneRef: @ref5Id
+            wherePromise.done (returnValue) =>
+              expect(returnValue.items.length).toEqual 1
+              expect(returnValue.items).toContain @testObject3
+              done()
 
       describe 'sortBy', ->
         it 'should return an array of objects ordered by a sortable field', (done) ->
@@ -707,7 +775,7 @@ describe 'redisObjectClassDataStore', ->
             i++
             @redisObjectClassDataStore.create( url: url, boolean: (i <= 5) )
           whereConditions =
-            sortBy: 'rand'
+            sortBy: 'random'
             boolean: true
           Promise.all(promiseArray).done =>
             wherePromise = @redisObjectClassDataStore.where(whereConditions)
@@ -759,7 +827,7 @@ describe 'redisObjectClassDataStore', ->
             expect(secondResultArray).toEqual firstResultArray
             done()
 
-    xit "should default to sorting by create at time (alphabetically by id)", (done) ->
+    it "should default to sorting by create at time (alphabetically by id)", (done) ->
       createDelayedObj = (integer) ->
         new Promise (resolve) =>
           nextTick(resolve @redisObjectClassDataStore.create(integer: integer))
@@ -769,7 +837,7 @@ describe 'redisObjectClassDataStore', ->
       _utilities.promiseEachFn(delayedCreatePromises).then (createdObjectArray) =>
         @redisObjectClassDataStore.all().done (returnArray) ->
           expect(returnArray.items.length).toEqual 10
-          expect(returnArray).toEqual createdObjectArray
+          expect(returnArray.items).toEqual createdObjectArray
           done()
 
     it "should return an array of objects sorted by sortableString when passed sortBy args", (done) ->
@@ -1326,13 +1394,13 @@ describe 'redisObjectClassDataStore', ->
           done()
 
     describe 'uniqueness validation', ->
-      xit 'should not create objects that fail validation', (done) ->
+      it 'should not create objects that fail validation', (done) ->
         @redisObjectClassDataStore.attributes.uniquenessValidation =
           dataType: 'string'
           identifiable: true
           validates:
             uniqueness: true
-        @redisObjectClassDataStore.redis.set 'RedisObjectClassDataStore:uniquenessValidation:notUnique', 'test', () =>
+        @redisObjectClassDataStore.redis.set 'RedisObjectClassDataStore#uniquenessValidation:notUnique', 'test', () =>
           @redisObjectClassDataStore.create(uniquenessValidation: 'notUnique').catch (errors) =>
             expect(errors).toContain(new Error 'uniquenessValidation should be a unique value')
             done()
@@ -1388,10 +1456,11 @@ describe 'redisObjectClassDataStore', ->
           expect(res.length).toEqual 2
           done()
 
-    xit 'should add to a set when an reference field is updated', (done) ->
-      testObjectPromise = @redisObjectClassDataStore.update @testObj.id, manyReferences: ['editedId1']
+    it 'should add to a set when an reference field is updated', (done) ->
+      pending()
+      testObjectPromise = @redisObjectClassDataStore.update(@testObj.id, manyReferences: ['editedId1'])
       testObjectPromise.done (obj) =>
-        @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore:' + @testObj.id +'#ManyReferenceRefs', (err, members) ->
+        @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore:' + @testObj.id + '#ReferenceRefs', (err, members) ->
           expect(members).toContain 'editedId1'
           expect(members.length).toEqual 4
           done()
@@ -1456,7 +1525,7 @@ describe 'redisObjectClassDataStore', ->
       it 'should remove values from a set when an reference is updated', (done) ->
         testObjectPromise = @redisObjectClassDataStore.update @testObj.id, remove_manyReferences: ['two2', '2']
         testObjectPromise.done (obj) =>
-          @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore:' + @testObj.id + '#ManyReferencesRefs', (err, members) ->
+          @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore:' + @testObj.id + '#ReferenceRefs', (err, members) ->
             expect(members).toContain 'one1'
             expect(members).toContain 'three3'
             expect(members.length).toEqual 2
