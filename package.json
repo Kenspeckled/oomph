@@ -1,6 +1,6 @@
 {
   "name": "oomph",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Object Oriented javascript models for the client and the server",
   "main": "./lib/index.js",
   "scripts": {
