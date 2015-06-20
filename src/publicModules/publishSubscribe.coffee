@@ -15,6 +15,13 @@ publishSubscribe =
     (@_callbacks[ev] || @_callbacks[ev] = []).push fn
     return this
 
+  removeListener: (ev, fn) ->
+    if @_callbacks and @_callbacks[ev]
+      callbackList = @_callbacks[ev]
+      index = callbackList.indexOf fn
+      if index > -1
+        callbackList.splice(index, 1)
+
   removeAllListenersOn: (ev) ->
     if @_callbacks and @_callbacks[ev]
       delete @_callbacks[ev]
