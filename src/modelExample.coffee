@@ -16,7 +16,9 @@ class Engine extends ObjectOrientedModel
       dataType: 'reference'
       many: true
       referenceModelName: 'Part'
-      preload: true
+    specialPart:
+      dataType: 'reference'
+      referenceModelName: 'Part'
     accessories:
       dataType: 'reference'
       referenceModelName: 'Accessory'
@@ -27,19 +29,25 @@ class Engine extends ObjectOrientedModel
 # 'Engine#manufacturingId:abc' => 'engine1'
 # 'Engine>id' => [ 1 => 'engine1']
 # 'Engine>manufacturingId' => [ 1 => 'engine1']
-# 'ModelSpec:[modelSpecId]' => { modelName: 'Jaguar', modelDetails: 'This is a model desciption', modelID: '123234'}
 # 'ModelSpec:[modelSpecId]#EngineRefs' => [ 'engine1']
 # 'Engine>horsePower' => [ 5 => 'engine1']
 # 'Engine:[engineId]#PartRefs' => [ '12345', '123545', '351324' ]
-# 'Part:[partId]#EngineRefs' => [ 'engine1', 'engine2' ]
-# 'Engine:[engineId]#AccessoryRefs' => [ '2', '4', '5' ]
+
+# 'Engine:[engineId]#parts:PartRefs' => [ '12345', '123545', '351324' ]
+# 'Part:[partId]#parts:EngineRefs' => [ 'engine1', 'engine2' ]
+
+# 'Engine:[engineId]#PartRefs:specialParts' => [ '12345', '123545', '351324' ]
+# 'Part:[partId]#EngineRefs:specialParts' => [ 'engine1']
+
 # 'Accessory:[accessoryId]#EngineRefs' => [ 'engine1' ]
 
 class Part  extends ObjectOrientedModel
   @defineFields
     engines:
       dataType: 'reference'
+      referenceModelName: 'Engine'
       many: true
+      namespace: 'parts' # namespace to match other model for bi-directional reference
     classification:
       dataType: 'string'
       searchable: true
@@ -48,8 +56,10 @@ class Part  extends ObjectOrientedModel
 
 # This should generate the following database data:
 # 'Part:[partId]' => { id: '12345', engines: 2, classification: 'abc12' }
-# 'Part:[partId]#engines' => [ 'engine1', 'engine2' ]
-# 'Engine:[engineId]#parts' => [ '12345', '123545', '351324' ]
+
+# 'Part:[partId]#parts:EngineRefs' => [ 'engine1', 'engine2' ]
+# 'Engine:[engineId]#engines:PartRefs' => [ '12345', '123545', '351324' ]
+
 # 'Parts#classification/a' => ['12345', '12346', '12347']
 # 'Parts#classification/ab' => ['12345', '12346']
 # 'Parts#classification/abc' => ['12345']

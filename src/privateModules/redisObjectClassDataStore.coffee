@@ -240,13 +240,14 @@ writeAttributes = (props) ->
           if _.includes([true, 'true', false, 'false'], value)
             multi.zadd self.name + "#" + attr + ":" + value, 1, props.id #set
         when 'reference'
+          namespace = obj.namespace || attr
           if obj.many
             multipleValues = value.split(",")
-            multi.sadd self.name + ":" +  props.id + "#" + obj.referenceModelName + 'Refs', multipleValues...
+            multi.sadd self.name + ":" +  props.id + "#" + namespace + ':' + obj.referenceModelName + 'Refs', multipleValues...
             multipleValues.forEach (vid) ->
-              multi.sadd obj.referenceModelName + ":" +  vid + "#" + self.name + 'Refs', props.id
+              multi.sadd obj.referenceModelName + ":" +  vid + "#" + namespace + ':' +  self.name + 'Refs', props.id
           else
-            multi.sadd obj.referenceModelName + ":" +  value + "#" + self.name + 'Refs', props.id
+            multi.sadd obj.referenceModelName + ":" +  value + "#" + namespace + ':' +  self.name + 'Refs', props.id
         else
           if obj['dataType'] != null
             reject new Error "Unrecognised dataType " + obj.dataType
@@ -376,8 +377,8 @@ redisObjectDataStore =
         if attrSettings and attrSettings.dataType == 'reference'
           if attrSettings.many
             getReferenceIds = new Promise (resolve, reject) ->
-              hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName}
-              referenceKey = self.name + ':' + id + '#' + hashObj.referenceModelName + 'Refs'
+              hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName, namespace: attrSettings.namespace || propertyName}
+              referenceKey = self.name + ':' + id + '#' + hashObj.namespace + ':' + hashObj.referenceModelName + 'Refs'
               self.redis.smembers referenceKey, (err, ids) ->
                 resolve {ids, hashObj}
             referencePromise = getReferenceIds.then (obj) ->
@@ -391,7 +392,7 @@ redisObjectDataStore =
             referencePromises.push referencePromise
           else
             hashPromise = new Promise (resolve, reject) ->
-              hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName}
+              hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName, namespace: attrSettings.namespace || propertyName}
               self.redis.hgetall hashObj.referenceModelName + ':' + propertyValue, (err, hash) ->
                 hashObj.referenceValue = createObjectFromHash hash
                 resolve hashObj
@@ -501,19 +502,20 @@ redisObjectDataStore =
         when 'reference'
           referenceModelName = @attributes[option].referenceModelName
           if referenceModelName 
+            namespace = @attributes[option].namespace || option
             if @attributes[option].many
               if optionValue.includesAllOf
                 _.each optionValue.includesAllOf, (id) ->
-                  sortedSetKeys.push name: referenceModelName + ':' + id + '#' + self.name + 'Refs'
+                  sortedSetKeys.push name: referenceModelName + ':' + id + '#' + namespace + ':' + self.name + 'Refs'
               if optionValue.includesAnyOf
                 _.each optionValue.includesAnyOf, (id) ->
-                  unionSortedSetKeys.push name: referenceModelName + ':' + id + '#' + self.name + 'Refs'
+                  unionSortedSetKeys.push name: referenceModelName + ':' + id + '#' + namespace + ':' + self.name + 'Refs'
             else
               if optionValue.anyOf
                 _.each optionValue.anyOf, (id) ->
-                  unionSortedSetKeys.push name: referenceModelName + ':' + id + '#' + self.name + 'Refs'
+                  unionSortedSetKeys.push name: referenceModelName + ':' + id + '#' + namespace + ':' + self.name + 'Refs'
               else
-                sortedSetKeys.push name: referenceModelName + ':' + optionValue + '#' + self.name + 'Refs'
+                sortedSetKeys.push name: referenceModelName + ':' + optionValue + '#' + namespace + ':' + self.name + 'Refs'
     prepareWhereConditionPromise = Promise.all(whereConditionPromises).then -> 
       if _.isEmpty(unionSortedSetKeys)
         keywordSearchPromise
@@ -618,11 +620,12 @@ redisObjectDataStore =
               if obj.identifiable
                 multi.del self.name + "#" + attr + ":" + originalValue
             when 'reference'
+              namespace = obj.namespace || attr
               if obj.many
                 if remove
-                  multi.srem self.name + ":" +  id + "#" + obj.referenceModelName + 'Refs', removeValue...
+                  multi.srem self.name + ":" +  id + "#" + namespace + ':' + obj.referenceModelName + 'Refs', removeValue...
                   removeValue.forEach (vid) ->
-                    multi.srem obj.referenceModelName + ":" +  vid + "#" + self.name + 'Refs', id
+                    multi.srem obj.referenceModelName + ":" +  vid + "#" + namespace + ':' + self.name + 'Refs', id
                 else
                   originalIds = _.map(originalValue, 'id')
                   newValue = _.union(originalIds, newValue)
@@ -630,7 +633,7 @@ redisObjectDataStore =
                     updateFieldsDiff[attr] = newValue 
               else
                 if remove
-                  multi.srem obj.referenceModelName + ":" + originalValue + "#" + self.name + 'Refs', id
+                  multi.srem obj.referenceModelName + ":" + originalValue + "#" + namespace + ':' + self.name + 'Refs', id
             when 'boolean'
               multi.zrem self.name + "#" + attr + ":" + originalValue, id
       multiPromise = new Promise (resolve, reject) ->

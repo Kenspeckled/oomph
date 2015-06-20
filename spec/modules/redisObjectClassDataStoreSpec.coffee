@@ -180,9 +180,25 @@ describe 'redisObjectClassDataStore', ->
             spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
             spyOn(multi, 'sadd')
             @redisObjectClassDataStore.create(linkedModel: ['linkedModelId1', 'linkedModelId2']).then (createdObject) ->
-              expect(multi.sadd).toHaveBeenCalledWith('RedisObjectClassDataStore:' + createdObject.id + '#LinkedModelRefs', 'linkedModelId1', 'linkedModelId2')
-              expect(multi.sadd).toHaveBeenCalledWith('LinkedModel:linkedModelId1#RedisObjectClassDataStoreRefs', createdObject.id)
-              expect(multi.sadd).toHaveBeenCalledWith('LinkedModel:linkedModelId2#RedisObjectClassDataStoreRefs', createdObject.id)
+              expect(multi.sadd).toHaveBeenCalledWith('RedisObjectClassDataStore:' + createdObject.id + '#linkedModel:LinkedModelRefs', 'linkedModelId1', 'linkedModelId2')
+              expect(multi.sadd).toHaveBeenCalledWith('LinkedModel:linkedModelId1#linkedModel:RedisObjectClassDataStoreRefs', createdObject.id)
+              expect(multi.sadd).toHaveBeenCalledWith('LinkedModel:linkedModelId2#linkedModel:RedisObjectClassDataStoreRefs', createdObject.id)
+              done()
+
+          it 'adds to a set with a namespace', (done) ->
+            @redisObjectClassDataStore.attributes =
+              linkedModel:
+                dataType: 'reference'
+                many: true
+                referenceModelName: 'LinkedModel'
+                namespace: 'namespaced'
+            multi = @redisObjectClassDataStore.redis.multi()
+            spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
+            spyOn(multi, 'sadd')
+            @redisObjectClassDataStore.create(linkedModel: ['linkedModelId1', 'linkedModelId2']).then (createdObject) ->
+              expect(multi.sadd).toHaveBeenCalledWith('RedisObjectClassDataStore:' + createdObject.id + '#namespaced:LinkedModelRefs', 'linkedModelId1', 'linkedModelId2')
+              expect(multi.sadd).toHaveBeenCalledWith('LinkedModel:linkedModelId1#namespaced:RedisObjectClassDataStoreRefs', createdObject.id)
+              expect(multi.sadd).toHaveBeenCalledWith('LinkedModel:linkedModelId2#namespaced:RedisObjectClassDataStoreRefs', createdObject.id)
               done()
 
         describe 'when many is not true', ->
@@ -1460,7 +1476,7 @@ describe 'redisObjectClassDataStore', ->
       pending()
       testObjectPromise = @redisObjectClassDataStore.update(@testObj.id, manyReferences: ['editedId1'])
       testObjectPromise.done (obj) =>
-        @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore:' + @testObj.id + '#ReferenceRefs', (err, members) ->
+        @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore:' + @testObj.id + '#manyReferences:ReferenceRefs', (err, members) ->
           expect(members).toContain 'editedId1'
           expect(members.length).toEqual 4
           done()
@@ -1525,7 +1541,7 @@ describe 'redisObjectClassDataStore', ->
       it 'should remove values from a set when an reference is updated', (done) ->
         testObjectPromise = @redisObjectClassDataStore.update @testObj.id, remove_manyReferences: ['two2', '2']
         testObjectPromise.done (obj) =>
-          @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore:' + @testObj.id + '#ReferenceRefs', (err, members) ->
+          @redisObjectClassDataStore.redis.smembers 'RedisObjectClassDataStore:' + @testObj.id + '#manyReferences:ReferenceRefs', (err, members) ->
             expect(members).toContain 'one1'
             expect(members).toContain 'three3'
             expect(members.length).toEqual 2
