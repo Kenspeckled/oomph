@@ -207,7 +207,6 @@ writeAttributes = (props) ->
               delete storableProps[attr]
           when 'reference'
             if obj.many
-              namespace = obj.namespace || attr
               delete storableProps[attr]
               storableProps[attr] = true if newObjectFlag
       self.redis.hmset self.name + ":" + props.id, storableProps, (err, res) ->
@@ -245,24 +244,14 @@ writeAttributes = (props) ->
           if _.includes([true, 'true', false, 'false'], value)
             multi.zadd self.name + "#" + attr + ":" + value, 1, props.id #set
         when 'reference'
-          namespace = obj.namespace || attr
           if obj.many
             multipleValues = _.compact(value.split(","))
-            multi.sadd self.name + ":" +  props.id + "#" + namespace + ':' + obj.referenceModelName + 'Refs', multipleValues...
-            multi.hincrby self.name + ":" +  props.id, namespace, multipleValues.length 
+            multi.sadd self.name + ":" +  props.id + "#" + attr + ':' + obj.referenceModelName + 'Refs', multipleValues...
+            namespace = obj.reverseReferenceAttribute || attr
             multipleValues.forEach (vid) ->
               multi.sadd obj.referenceModelName + ":" +  vid + "#" + namespace + ':' +  self.name + 'Refs', props.id
           else
-            multi.sadd obj.referenceModelName + ":" + value + "#" + namespace + ':' +  self.name + 'Refs', props.id
-            indexingPromises.push new Promise (resolve) ->
-              key = obj.referenceModelName + ":" + value
-              n = namespace 
-              self.redis.hget key, n, (err, hasValueAtField) ->
-                if hasValueAtField
-                  self.redis.hincrby key, n, 1, ->
-                    resolve()
-                else
-                  resolve()
+            multi.sadd obj.referenceModelName + ":" + value + "#" + attr + ':' +  self.name + 'Refs', props.id
         else
           if obj['dataType'] != null
             reject new Error "Unrecognised dataType " + obj.dataType
@@ -394,9 +383,9 @@ redisObjectDataStore =
         continue if _.isUndefined(propertyValue) 
         if attrSettings.dataType == 'reference'
           if attrSettings.many
-            hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName, namespace: (attrSettings.namespace || propertyName) }
+            hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName }
             getReferenceIds = new Promise (resolve, reject) ->
-              referenceKey = self.name + ':' + id + '#' + hashObj.namespace + ':' + hashObj.referenceModelName + 'Refs'
+              referenceKey = self.name + ':' + id + '#' + propertyName + ':' + hashObj.referenceModelName + 'Refs'
               self.redis.smembers referenceKey, (err, ids) ->
                 resolve {ids, hashObj}
             referencePromise = getReferenceIds.then (obj) ->
@@ -520,8 +509,8 @@ redisObjectDataStore =
         when 'reference'
           referenceModelName = @attributes[option].referenceModelName
           if referenceModelName 
-            namespace = @attributes[option].namespace || option
-            if @attributes[option].many
+            namespace = @attributes[option].reverseReferenceAttribute || option
+            if @attributes[option].many 
               if optionValue.includesAllOf
                 _.each optionValue.includesAllOf, (id) ->
                   sortedSetKeys.push name: referenceModelName + ':' + id + '#' + namespace + ':' + self.name + 'Refs'
@@ -638,21 +627,19 @@ redisObjectDataStore =
               if obj.identifiable
                 multi.del self.name + "#" + attr + ":" + originalValue
             when 'reference'
-              namespace = obj.namespace || attr
               if obj.many
                 if remove
-                  multi.srem self.name + ":" +  id + "#" + namespace + ':' + obj.referenceModelName + 'Refs', removeValue...
-                  multi.hincrby self.name + ":" +  id, namespace, -removeValue.length
+                  multi.srem self.name + ":" +  id + "#" + attr + ':' + obj.referenceModelName + 'Refs', removeValue...
+                  namespace = obj.reverseReferenceAttribute || attr
                   removeValue.forEach (vid) ->
                     multi.srem obj.referenceModelName + ":" +  vid + "#" + namespace + ':' + self.name + 'Refs', id
-                    # FIXME: decrement the count in the refereceModel hash
                 else
                   originalIds = _.map(originalValue, 'id')
                   intersectingValues = _.intersection(originalIds, newValue)
                   updateFieldsDiff[attr] = intersectingValues if !_.isEmpty(intersectingValues)
               else
                 if remove
-                  multi.srem obj.referenceModelName + ":" + originalValue + "#" + namespace + ':' + self.name + 'Refs', id
+                  multi.srem obj.referenceModelName + ":" + originalValue + "#" + attr + ':' + self.name + 'Refs', id
             when 'boolean'
               multi.zrem self.name + "#" + attr + ":" + originalValue, id
       multiPromise = new Promise (resolve, reject) ->

@@ -16,6 +16,7 @@ class Engine extends ObjectOrientedModel
       dataType: 'reference'
       many: true
       referenceModelName: 'Part'
+      reverseReferenceAttribute: 'engines'
     specialPart:
       dataType: 'reference'
       referenceModelName: 'Part'
@@ -34,7 +35,7 @@ class Engine extends ObjectOrientedModel
 # 'Engine:[engineId]#PartRefs' => [ '12345', '123545', '351324' ]
 
 # 'Engine:[engineId]#parts:PartRefs' => [ '12345', '123545', '351324' ]
-# 'Part:[partId]#parts:EngineRefs' => [ 'engine1', 'engine2' ]
+# 'Part:[partId]#engines:EngineRefs' => [ 'engine1', 'engine2' ]
 
 # 'Engine:[engineId]#PartRefs:specialParts' => [ '12345', '123545', '351324' ]
 # 'Part:[partId]#EngineRefs:specialParts' => [ 'engine1']
@@ -47,7 +48,7 @@ class Part  extends ObjectOrientedModel
       dataType: 'reference'
       referenceModelName: 'Engine'
       many: true
-      namespace: 'parts' # namespace to match other model for bi-directional reference
+      reverseReferenceAttribute: 'parts' # namespace to match other model for bi-directional reference
     classification:
       dataType: 'string'
       searchable: true
@@ -57,8 +58,8 @@ class Part  extends ObjectOrientedModel
 # This should generate the following database data:
 # 'Part:[partId]' => { id: '12345', engines: 2, classification: 'abc12' }
 
-# 'Part:[partId]#parts:EngineRefs' => [ 'engine1', 'engine2' ]
-# 'Engine:[engineId]#engines:PartRefs' => [ '12345', '123545', '351324' ]
+# 'Part:[partId]#engines:EngineRefs' => [ 'engine1', 'engine2' ]
+# 'Engine:[engineId]#parts:PartRefs' => [ '12345', '123545', '351324' ]
 
 # 'Parts#classification/a' => ['12345', '12346', '12347']
 # 'Parts#classification/ab' => ['12345', '12346']

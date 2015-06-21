@@ -171,46 +171,18 @@ describe 'redisObjectClassDataStore', ->
 
         describe 'when many is true', ->
 
-          it "sets the reference count", (done) ->
+          it "sets the reference to true", (done) ->
             @referenceModel.create(secondId: 'id1').then (ref1) =>
               @redisObjectClassDataStore.create(manyReferences: [ref1.id]).then (createdObject) =>
                 @redis.hgetall 'RedisObjectClassDataStore:' + createdObject.id, (err, obj) ->
-                  expect(obj.manyReferences).toEqual '1'
+                  expect(obj.manyReferences).toEqual 'true'
                   done()
 
-          it "sets the reference count when created with muliple references", (done) ->
-            ref1 = @referenceModel.create(secondId: 'id1')
-            ref2 = @referenceModel.create(secondId: 'id2')
-            ref3 = @referenceModel.create(secondId: 'id3')
-            Promise.all([ref1,ref2,ref3]).done (refs) =>
-              ids = _.map(refs, 'id')
-              @redisObjectClassDataStore.create(manyReferences: ids).then (createdObject) =>
+          it "sets the reference to even when empty", (done) ->
+            @referenceModel.create(secondId: 'id1').then (ref1) =>
+              @redisObjectClassDataStore.create(url: 'one').then (createdObject) =>
                 @redis.hgetall 'RedisObjectClassDataStore:' + createdObject.id, (err, obj) ->
-                  expect(obj.manyReferences).toEqual '3'
-                  done()
-
-          it "increments the reference count when backwards association adds to the same set", (done) ->
-            @referenceModel.attributes =
-              redRef:
-                dataType: 'reference'
-                referenceModelName: 'RedisObjectClassDataStore'
-                namespace: 'manyReferences'
-            @redisObjectClassDataStore.create(url: 'one').then (createdObject) =>
-              @referenceModel.create(redRef: createdObject.id).done (ref1) =>
-                @redis.hgetall 'RedisObjectClassDataStore:' + createdObject.id, (err, obj) ->
-                  expect(obj.manyReferences).toEqual '1' 
-                  done()
-
-          it "does not increments the reference count when there is no backwards association adds to the same set", (done) ->
-            @referenceModel.attributes =
-              redRef:
-                dataType: 'reference'
-                referenceModelName: 'RedisObjectClassDataStore'
-            @redisObjectClassDataStore.create(url: 'one').then (createdObject) =>
-              @referenceModel.create(redRef: createdObject.id).done (ref1) =>
-                @redis.hgetall 'RedisObjectClassDataStore:' + createdObject.id, (err, obj) ->
-                  expect(obj.manyReferences).toBe '0'
-                  expect(obj.redRef).toBe undefined
+                  expect(obj.manyReferences).toEqual 'true'
                   done()
 
           it 'adds to a set', (done) ->
@@ -228,18 +200,18 @@ describe 'redisObjectClassDataStore', ->
               expect(multi.sadd).toHaveBeenCalledWith('LinkedModel:linkedModelId2#linkedModel:RedisObjectClassDataStoreRefs', createdObject.id)
               done()
 
-          it 'adds to a set with a namespace', (done) ->
+          it 'adds to a set with a reverseReferenceAttribute', (done) ->
             @redisObjectClassDataStore.attributes =
               linkedModel:
                 dataType: 'reference'
                 many: true
                 referenceModelName: 'LinkedModel'
-                namespace: 'namespaced'
+                reverseReferenceAttribute: 'namespaced'
             multi = @redisObjectClassDataStore.redis.multi()
             spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
             spyOn(multi, 'sadd')
             @redisObjectClassDataStore.create(linkedModel: ['linkedModelId1', 'linkedModelId2']).then (createdObject) ->
-              expect(multi.sadd).toHaveBeenCalledWith('RedisObjectClassDataStore:' + createdObject.id + '#namespaced:LinkedModelRefs', 'linkedModelId1', 'linkedModelId2')
+              expect(multi.sadd).toHaveBeenCalledWith('RedisObjectClassDataStore:' + createdObject.id + '#linkedModel:LinkedModelRefs', 'linkedModelId1', 'linkedModelId2')
               expect(multi.sadd).toHaveBeenCalledWith('LinkedModel:linkedModelId1#namespaced:RedisObjectClassDataStoreRefs', createdObject.id)
               expect(multi.sadd).toHaveBeenCalledWith('LinkedModel:linkedModelId2#namespaced:RedisObjectClassDataStoreRefs', createdObject.id)
               done()
@@ -696,6 +668,11 @@ describe 'redisObjectClassDataStore', ->
           @redisObjectClassDataStore.attributes.oneRef =
             dataType: 'reference'
             referenceModelName: 'Reference'
+          @redisObjectClassDataStore.manyReferences =
+            dataType: 'reference'
+            many: true
+            referenceModelName: 'Reference'
+            reverseReferenceAttribute: 'manyReferences'
           ref1 = @referenceModel.create(secondId: 'id1')
           ref2 = @referenceModel.create(secondId: 'id2')
           ref3 = @referenceModel.create(secondId: 'id3')
@@ -1536,62 +1513,11 @@ describe 'redisObjectClassDataStore', ->
           expect(members.length).toEqual 4
           done()
 
-
-    it "increments the reference count", (done) ->
-      @referenceModel.create(secondId: 'id1').done (ref1) =>
-        @redisObjectClassDataStore.update(@testObj.id, manyReferences: [ref1.id]).then (createdObject) =>
-          @redis.hgetall 'RedisObjectClassDataStore:' + @testObj.id, (err, obj) ->
-            expect(obj.manyReferences).toEqual '4'
-            done()
-
-    it "increments the reference count when created with muliple references", (done) ->
-      ref1 = @referenceModel.create(secondId: 'id1')
-      ref2 = @referenceModel.create(secondId: 'id2')
-      ref3 = @referenceModel.create(secondId: 'id3')
-      Promise.all([ref1,ref2,ref3]).done (refs) =>
-        ids = _.map(refs, 'id')
-        @redisObjectClassDataStore.update(@testObj.id, manyReferences: ids).then (createdObject) =>
-          @redis.hgetall 'RedisObjectClassDataStore:' + @testObj.id, (err, obj) ->
-            expect(obj.manyReferences).toEqual '6'
-            done()
-
-    it "decrements the reference count when references are removed", (done) ->
-      @redisObjectClassDataStore.update(@testObj.id, remove_manyReferences: [@ref1Id]).then (createdObject) =>
-        @redis.hgetall 'RedisObjectClassDataStore:' + @testObj.id, (err, obj) ->
-          expect(obj.manyReferences).toEqual '2'
-          done()
-
-    it "decrements the reference count when created with muliple references", (done) ->
-      @redisObjectClassDataStore.update(@testObj.id, remove_manyReferences: [@ref1Id, @ref2Id, @ref3Id]).then (createdObject) =>
-        @redis.hgetall 'RedisObjectClassDataStore:' + @testObj.id, (err, obj) ->
-          expect(obj.manyReferences).toEqual '0'
-          done()
-
-    it "decrements the reference count when created with muliple references", (done) ->
-      @redisObjectClassDataStore.update(@testObj.id, remove_manyReferences: [@ref1Id, @ref2Id, @ref3Id]).then (createdObject) =>
-        @redis.hgetall 'RedisObjectClassDataStore:' + @testObj.id, (err, obj) ->
-          expect(obj.manyReferences).toEqual '0'
-          done()
-
     it 'removes from a set', (done) ->
       @redisObjectClassDataStore.update(@testObj.id, remove_manyReferences: [@ref1Id]).then (createdObject) =>
         @redis.smembers 'Reference:' + @ref1Id + '#manyReferences:RedisObjectClassDataStoreRefs' , (err, obj) =>
           expect(obj).not.toContain @testObj.id
           done()
-
-    it "decrements the reference count when backwards association removes from the same set", (done) ->
-      pending()
-      @referenceModel.attributes =
-        redRef:
-          dataType: 'reference'
-          referenceModelName: 'RedisObjectClassDataStore'
-          namespace: 'manyReferences'
-      @redisObjectClassDataStore.create(url: 'one').then (createdObject) =>
-        @referenceModel.create(redRef: createdObject.id).done (ref1) =>
-          @referenceModel.update(ref1.id, remove_redRef: createdObject.id).done (ref1) =>
-            @redis.hgetall 'RedisObjectClassDataStore:' + createdObject.id, (err, obj) ->
-              expect(obj.manyReferences).toEqual '0' 
-              done()
 
     it 'removes from a set', (done) ->
       @redisObjectClassDataStore.attributes.linkedModel = 
