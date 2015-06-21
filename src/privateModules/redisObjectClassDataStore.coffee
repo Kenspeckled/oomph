@@ -209,7 +209,7 @@ writeAttributes = (props) ->
             if obj.many
               namespace = obj.namespace || attr
               delete storableProps[attr]
-              storableProps[namespace] = '0' if newObjectFlag
+              storableProps[attr] = true if newObjectFlag
       self.redis.hmset self.name + ":" + props.id, storableProps, (err, res) ->
         resolve(storableProps)
   indexPromise = writePromise.then (storedProps) ->
