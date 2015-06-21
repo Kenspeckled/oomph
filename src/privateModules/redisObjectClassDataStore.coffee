@@ -183,8 +183,10 @@ removeIndexedSearchableString = (attr, words, id) ->
 
 writeAttributes = (props) ->
   self = this
+  newObjectFlag = false
   idPromise = new Promise (resolve) ->
     if !props.id
+      newObjectFlag = true
       generateUniqueId.apply(self).then (id) ->
         resolve id
     else
@@ -194,17 +196,20 @@ writeAttributes = (props) ->
     storableProps = _.clone props
     new Promise (resolve) ->
       for attr, obj of self.attributes
-        continue if storableProps[attr] == undefined #props[attr] can be false for boolean dataType
         switch obj.dataType
           when 'integer'
-            storableProps[attr + '[i]'] = storableProps[attr]
-            delete storableProps[attr]
+            if storableProps[attr]
+              storableProps[attr + '[i]'] = storableProps[attr]
+              delete storableProps[attr]
           when 'boolean'
-            storableProps[attr + '[b]'] = storableProps[attr]
-            delete storableProps[attr]
+            if storableProps[attr]
+              storableProps[attr + '[b]'] = storableProps[attr]
+              delete storableProps[attr]
           when 'reference'
             if obj.many
-              storableProps[attr] = true
+              namespace = obj.namespace || attr
+              delete storableProps[attr]
+              storableProps[namespace] = '0' if newObjectFlag
       self.redis.hmset self.name + ":" + props.id, storableProps, (err, res) ->
         resolve(storableProps)
   indexPromise = writePromise.then (storedProps) ->
@@ -242,12 +247,22 @@ writeAttributes = (props) ->
         when 'reference'
           namespace = obj.namespace || attr
           if obj.many
-            multipleValues = value.split(",")
+            multipleValues = _.compact(value.split(","))
             multi.sadd self.name + ":" +  props.id + "#" + namespace + ':' + obj.referenceModelName + 'Refs', multipleValues...
+            multi.hincrby self.name + ":" +  props.id, namespace, multipleValues.length 
             multipleValues.forEach (vid) ->
               multi.sadd obj.referenceModelName + ":" +  vid + "#" + namespace + ':' +  self.name + 'Refs', props.id
           else
-            multi.sadd obj.referenceModelName + ":" +  value + "#" + namespace + ':' +  self.name + 'Refs', props.id
+            multi.sadd obj.referenceModelName + ":" + value + "#" + namespace + ':' +  self.name + 'Refs', props.id
+            indexingPromises.push new Promise (resolve) ->
+              key = obj.referenceModelName + ":" + value
+              n = namespace 
+              self.redis.hget key, n, (err, hasValueAtField) ->
+                if hasValueAtField
+                  self.redis.hincrby key, n, 1, ->
+                    resolve()
+                else
+                  resolve()
         else
           if obj['dataType'] != null
             reject new Error "Unrecognised dataType " + obj.dataType
@@ -283,7 +298,7 @@ processWriteQueue = ->
           resolve()
   processPromise.then ->
     _.each writeReturnObject, (obj, tmpId) ->
-      publishSubscribe.broadcast.apply(self, ["attributes_written_"+tmpId, obj])
+      publishSubscribe.broadcast.apply(self, ["attributes_written_" + tmpId, obj])
     return writeObjectArray
 
 
@@ -342,7 +357,7 @@ findKeywordsInAnyFields = (fields, keywords, weightOptions) ->
       for field in fields
         weight = (if weightOptions[field] and weightOptions[field].weight then weightOptions[field].weight else 1)
         keyNames.push name: @name + "#" + field + "/" + keyword, weight: weight
-      unionKey = 'keywordUnionSet:'+_utilities.randomString(5)
+      unionKey = 'keywordUnionSet:' + _utilities.randomString(5)
       unionKeyPromise = new Promise (resolve) =>
         @redis.zunionstore unionKey, keyNames.length, _.map(keyNames, 'name')..., 'weights', _.map(keyNames, 'weight')..., ->
           resolve unionKey
@@ -373,13 +388,14 @@ redisObjectDataStore =
         else
           resolve(hash)
     modifyHashPromise = getHash.then (hash) ->
-      for propertyName in Object.keys(hash)
+      for propertyName in Object.keys(self.attributes)
         propertyValue = hash[propertyName]
         attrSettings = self.attributes[propertyName]
-        if attrSettings and attrSettings.dataType == 'reference'
+        continue if _.isUndefined(propertyValue) 
+        if attrSettings.dataType == 'reference'
           if attrSettings.many
+            hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName, namespace: (attrSettings.namespace || propertyName) }
             getReferenceIds = new Promise (resolve, reject) ->
-              hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName, namespace: attrSettings.namespace || propertyName}
               referenceKey = self.name + ':' + id + '#' + hashObj.namespace + ':' + hashObj.referenceModelName + 'Refs'
               self.redis.smembers referenceKey, (err, ids) ->
                 resolve {ids, hashObj}
@@ -394,7 +410,7 @@ redisObjectDataStore =
             referencePromises.push referencePromise
           else
             hashPromise = new Promise (resolve, reject) ->
-              hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName, namespace: attrSettings.namespace || propertyName}
+              hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName}
               self.redis.hgetall hashObj.referenceModelName + ':' + propertyValue, (err, hash) ->
                 hashObj.referenceValue = createObjectFromHash hash
                 resolve hashObj
@@ -475,7 +491,7 @@ redisObjectDataStore =
         continue
       switch @attributes[option].dataType
         when 'integer' #add less than and greater than functionality
-          tempIntegerKey = 'temporaryIntegerSet:'+_utilities.randomString(5)
+          tempIntegerKey = 'temporaryIntegerSet:' + _utilities.randomString(5)
           integerSortedSetName = self.name + '>' + option
           minValue = '-inf'
           maxValue = '+inf'
@@ -626,13 +642,14 @@ redisObjectDataStore =
               if obj.many
                 if remove
                   multi.srem self.name + ":" +  id + "#" + namespace + ':' + obj.referenceModelName + 'Refs', removeValue...
+                  multi.hincrby self.name + ":" +  id, namespace, -removeValue.length
                   removeValue.forEach (vid) ->
                     multi.srem obj.referenceModelName + ":" +  vid + "#" + namespace + ':' + self.name + 'Refs', id
+                    # FIXME: decrement the count in the refereceModel hash
                 else
                   originalIds = _.map(originalValue, 'id')
-                  newValue = _.union(originalIds, newValue)
-                  unless _.isEqual(newValue, originalValue) 
-                    updateFieldsDiff[attr] = newValue 
+                  intersectingValues = _.intersection(originalIds, newValue)
+                  updateFieldsDiff[attr] = intersectingValues if !_.isEmpty(intersectingValues)
               else
                 if remove
                   multi.srem obj.referenceModelName + ":" + originalValue + "#" + namespace + ':' + self.name + 'Refs', id
