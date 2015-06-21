@@ -300,8 +300,10 @@ addToWriteQueue = (props) ->
       return processWriteQueue.apply(self)
     , 100
     new Promise (resolve) ->
-      #FIXME: need to remove listeners
-      publishSubscribe.listen.apply self, ["attributes_written_"+tmpId, (obj) -> resolve(obj)]
+      resolveFn = (obj) -> 
+        publishSubscribe.removeAllListenersOn.apply self, ["attributes_written_" + tmpId]
+        resolve(obj)
+      publishSubscribe.listen.apply self, ["attributes_written_" + tmpId, resolveFn]
 
 
 sendAttributesForSaving = (dataFields, skipValidation) ->
