@@ -383,12 +383,13 @@ redisObjectDataStore =
         continue if _.isUndefined(propertyValue) 
         if attrSettings.dataType == 'reference'
           if attrSettings.many
-            hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName }
-            getReferenceIds = new Promise (resolve, reject) ->
-              referenceKey = self.name + ':' + id + '#' + hashObj.propertyName + ':' + hashObj.referenceModelName + 'Refs'
-              self.redis.smembers referenceKey, (err, ids) ->
-                resolve {ids, hashObj}
-            referencePromise = getReferenceIds.then (obj) ->
+            getReferenceIdsFn = (propertyName, referenceModelName) ->
+              new Promise (resolve, reject) ->
+                referenceKey = self.name + ':' + id + '#' + propertyName + ':' + referenceModelName + 'Refs'
+                self.redis.smembers referenceKey, (err, ids) ->
+                  hashObj = {propertyName, referenceModelName}
+                  resolve {ids, hashObj}
+            referencePromise = getReferenceIdsFn(propertyName, attrSettings.referenceModelName).then (obj) ->
               getObjects = _.map obj.ids, (id) ->
                 new Promise (resolve, reject) ->
                   self.redis.hgetall obj.hashObj.referenceModelName + ':' + id, (err, hash) ->
@@ -398,12 +399,13 @@ redisObjectDataStore =
                 obj.hashObj
             referencePromises.push referencePromise
           else
-            hashPromise = new Promise (resolve, reject) ->
-              hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName}
-              self.redis.hgetall hashObj.referenceModelName + ':' + propertyValue, (err, hash) ->
-                hashObj.referenceValue = createObjectFromHash hash
-                resolve hashObj
-            referencePromises.push hashPromise
+            hashPromiseFn = (propertyName, propertyValue, referenceModelName) ->
+              new Promise (resolve, reject) ->
+                self.redis.hgetall referenceModelName + ':' + propertyValue, (err, hash) ->
+                  hashObj = {propertyName, propertyValue, referenceModelName}
+                  hashObj.referenceValue = createObjectFromHash hash
+                  resolve hashObj
+            referencePromises.push hashPromiseFn(propertyName, propertyValue, attrSettings.referenceModelName)
           delete hash[propertyName]
       hash
     modifyHashPromise.then (hash) ->
