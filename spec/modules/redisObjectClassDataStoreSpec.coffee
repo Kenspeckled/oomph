@@ -672,7 +672,6 @@ describe 'redisObjectClassDataStore', ->
             dataType: 'reference'
             many: true
             referenceModelName: 'Reference'
-            reverseReferenceAttribute: 'manyReferences'
           ref1 = @referenceModel.create(secondId: 'id1')
           ref2 = @referenceModel.create(secondId: 'id2')
           ref3 = @referenceModel.create(secondId: 'id3')

@@ -244,14 +244,14 @@ writeAttributes = (props) ->
           if _.includes([true, 'true', false, 'false'], value)
             multi.zadd self.name + "#" + attr + ":" + value, 1, props.id #set
         when 'reference'
+          namespace = obj.reverseReferenceAttribute || attr
           if obj.many
             multipleValues = _.compact(value.split(","))
             multi.sadd self.name + ":" +  props.id + "#" + attr + ':' + obj.referenceModelName + 'Refs', multipleValues...
-            namespace = obj.reverseReferenceAttribute || attr
             multipleValues.forEach (vid) ->
               multi.sadd obj.referenceModelName + ":" +  vid + "#" + namespace + ':' +  self.name + 'Refs', props.id
           else
-            multi.sadd obj.referenceModelName + ":" + value + "#" + attr + ':' +  self.name + 'Refs', props.id
+            multi.sadd obj.referenceModelName + ":" + value + "#" + namespace + ':' +  self.name + 'Refs', props.id
         else
           if obj['dataType'] != null
             reject new Error "Unrecognised dataType " + obj.dataType
@@ -385,7 +385,7 @@ redisObjectDataStore =
           if attrSettings.many
             hashObj = {propertyName, referenceModelName: attrSettings.referenceModelName }
             getReferenceIds = new Promise (resolve, reject) ->
-              referenceKey = self.name + ':' + id + '#' + propertyName + ':' + hashObj.referenceModelName + 'Refs'
+              referenceKey = self.name + ':' + id + '#' + hashObj.propertyName + ':' + hashObj.referenceModelName + 'Refs'
               self.redis.smembers referenceKey, (err, ids) ->
                 resolve {ids, hashObj}
             referencePromise = getReferenceIds.then (obj) ->
@@ -627,10 +627,10 @@ redisObjectDataStore =
               if obj.identifiable
                 multi.del self.name + "#" + attr + ":" + originalValue
             when 'reference'
+              namespace = obj.reverseReferenceAttribute || attr
               if obj.many
                 if remove
                   multi.srem self.name + ":" +  id + "#" + attr + ':' + obj.referenceModelName + 'Refs', removeValue...
-                  namespace = obj.reverseReferenceAttribute || attr
                   removeValue.forEach (vid) ->
                     multi.srem obj.referenceModelName + ":" +  vid + "#" + namespace + ':' + self.name + 'Refs', id
                 else
@@ -639,7 +639,7 @@ redisObjectDataStore =
                   updateFieldsDiff[attr] = intersectingValues if !_.isEmpty(intersectingValues)
               else
                 if remove
-                  multi.srem obj.referenceModelName + ":" + originalValue + "#" + attr + ':' + self.name + 'Refs', id
+                  multi.srem obj.referenceModelName + ":" + originalValue + "#" + namespace + ':' + self.name + 'Refs', id
             when 'boolean'
               multi.zrem self.name + "#" + attr + ":" + originalValue, id
       multiPromise = new Promise (resolve, reject) ->
