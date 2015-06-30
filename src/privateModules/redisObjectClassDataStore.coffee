@@ -37,9 +37,9 @@ generateUniqueId = ->
             uniqueId = true
             resolve(id)
 
-createObjectFromHash = (hash,modelPrototype) ->
+createObjectFromHash = (hash, modelClass) ->
   obj = {}
-  Object.create(modelPrototype) if modelPrototype
+  obj = new modelClass() if modelClass and modelClass.prototype
   return false if !hash
   obj.createdAt = idToCreatedAtDate(hash.id) if hash.id
   for key, value of hash
@@ -412,7 +412,7 @@ redisObjectDataStore =
       Promise.all(referencePromises).then (referenceObjects) ->
         _.each referenceObjects, (refObj) ->
           hash[refObj.propertyName] = refObj.referenceValue
-        createObjectFromHash(hash, self.prototype)
+        createObjectFromHash(hash, self)
 
 
   findBy: (option) ->
