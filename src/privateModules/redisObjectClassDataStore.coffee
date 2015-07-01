@@ -209,9 +209,13 @@ writeAttributes = (props) ->
             if obj.many
               delete storableProps[attr]
               storableProps[attr] = true if newObjectFlag
+          when 'string'
+            if obj.url and obj.urlBaseAttribute
+              # FIXME: Handle duplicate urls and force them to be unique by appending sequential numbers
+              storableProps[attr] = _utilities.urlString(props[obj.urlBaseAttribute]) if !storableProps[attr]
       self.redis.hmset self.name + ":" + props.id, storableProps, (err, res) ->
         resolve(storableProps)
-  indexPromise = writePromise.then (storedProps) ->
+  indexPromise = writePromise.then (props) ->
     indexingPromises = []
     multi = self.redis.multi()
     indexPromiseFn = (sortedSetName, attributeName) ->
@@ -233,7 +237,7 @@ writeAttributes = (props) ->
           if obj.sortable
             sortedSetName = self.name + ">" + attr
             indexingPromises.push indexPromiseFn(sortedSetName, attr)
-          if obj.identifiable
+          if obj.identifiable or obj.url
             multi.set self.name + "#" + attr + ":" + value, props.id #string
           if obj.searchable
             indexingPromises.push indexSearchableString.apply(self, [attr, value, props.id])
@@ -422,7 +426,7 @@ redisObjectDataStore =
       if optionName == 'id'
         resolve condition
       else
-        if @attributes[optionName].dataType == 'string' and @attributes[optionName].identifiable
+        if @attributes[optionName].dataType == 'string' and (@attributes[optionName].identifiable or @attributes[optionName].url)
           stringName = @name + "#" + optionName + ":" + condition
           @redis.get stringName, (err, res) ->
             resolve res
@@ -626,7 +630,7 @@ redisObjectDataStore =
                 multi.zrem orderedSetName, id
               if obj.searchable
                 callbackPromises.push removeIndexedSearchableString.apply(self, [attr, originalValue, id])
-              if obj.identifiable
+              if obj.identifiable or obj.url
                 multi.del self.name + "#" + attr + ":" + originalValue
             when 'reference'
               namespace = obj.reverseReferenceAttribute || attr

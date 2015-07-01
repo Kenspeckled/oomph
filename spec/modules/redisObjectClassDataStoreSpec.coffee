@@ -98,6 +98,50 @@ describe 'redisObjectClassDataStore', ->
               expect(multi.set).toHaveBeenCalledWith('RedisObjectClassDataStore#identifier:identifierValue', createdObject.id)
               done()
 
+        fdescribe 'where url is true', ->
+          it 'sores the generated url string in the object hash ', (done) ->
+            @redisObjectClassDataStore.attributes =
+              name:
+                dataType: 'string'
+              url:
+                dataType: 'string'
+                url: true
+                urlBaseAttribute: 'name'
+            @redisObjectClassDataStore.create(name: "Héllo & gøød nîght").then (createdObject) ->
+              expect(createdObject.url).toEqual 'hello-and-good-night' 
+              done()
+
+          it 'adds to a key-value pair with a generated url string', (done) ->
+            @redisObjectClassDataStore.attributes =
+              name:
+                dataType: 'string'
+              url:
+                dataType: 'string'
+                url: true
+                urlBaseAttribute: 'name'
+            multi = @redisObjectClassDataStore.redis.multi()
+            spyOn(@redisObjectClassDataStore.redis, 'multi').and.returnValue(multi)
+            spyOn(multi, 'set')
+            @redisObjectClassDataStore.create(name: "Héllo & gøød nîght").then (createdObject) ->
+              expect(multi.set).toHaveBeenCalledWith('RedisObjectClassDataStore#url:hello-and-good-night', createdObject.id)
+              done()
+
+          it "appends a sequential number for duplicate generated url string", (done) ->
+            @redisObjectClassDataStore.attributes =
+              name:
+                dataType: 'string'
+              url:
+                dataType: 'string'
+                url: true
+                urlBaseAttribute: 'name'
+            @redisObjectClassDataStore.create(name: "Héllo & gøød nîght").then (obj1) =>
+              @redisObjectClassDataStore.create(name: "Héllo & good night").then (obj2) =>
+                @redisObjectClassDataStore.create(name: "Hello & good night").then (obj3) ->
+                  expect(obj1.url).toEqual 'hello-and-good-night' 
+                  expect(obj2.url).toEqual 'hello-and-good-night-1' 
+                  expect(obj3.url).toEqual 'hello-and-good-night-2' 
+                  done()
+
         describe 'where sortable is true', ->
           it 'adds to an ordered list', (done) ->
             testPromise1 = @redisObjectClassDataStore.create( sortableString: 'd' )
