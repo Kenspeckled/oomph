@@ -2,8 +2,8 @@ redis = require 'redis'
 Promise = require 'promise'
 pluralise = require 'pluralize'
 _ = require 'lodash'
-_utilities = require '../publicModules/utilities'
-publishSubscribe = require '../publicModules/publishSubscribe'
+_utilities = require '../utilities'
+publishSubscribe = require '../publishSubscribe'
 ValidationError = require '../models/ValidationError'
 
 numberOfExtraCharactersOnId = 2

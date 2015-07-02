@@ -2,7 +2,7 @@ Redis = require 'redis'
 Promise = require 'promise'
 redisObjectClassDataStore = require '../../src/privateModules/redisObjectClassDataStore'
 _ = require 'lodash'
-_utilities = require '../../src/publicModules/utilities'
+_utilities = require '../../src/utilities'
 ValidationError = require '../../src/models/ValidationError'
 
 describe 'redisObjectClassDataStore', ->
@@ -98,7 +98,7 @@ describe 'redisObjectClassDataStore', ->
               expect(multi.set).toHaveBeenCalledWith('RedisObjectClassDataStore#identifier:identifierValue', createdObject.id)
               done()
 
-        fdescribe 'where url is true', ->
+        describe 'where url is true', ->
           it 'sores the generated url string in the object hash ', (done) ->
             @redisObjectClassDataStore.attributes =
               name:
