@@ -1,7 +1,7 @@
 {
   "name": "oomph",
   "version": "0.3.6",
-  "description": "Object Oriented javascript models for the client and the server",
+  "description": "Object Oriented javascript framework",
   "main": "./lib/index.js",
   "scripts": {
     "test": "jasmine",
