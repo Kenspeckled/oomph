@@ -2,10 +2,12 @@
 [![Build Status](https://travis-ci.org/Kenspeckled/oomph.svg?branch=master)](https://travis-ci.org/Kenspeckled/oomph)
 <!-- [![Code Climate](https://codeclimate.com/github/Kenspeckled/oomph/badges/gpa.svg)](https://codeclimate.com/github/Kenspeckled/oomph) -->
 
+Object Oriented javascript application framework
+
 ## Work In Progress
 This project has changed significantly since conception and is headed towards a new major release that will turn it from a ORM to a full framework. Sit tight, still a lot of work to do!
 
-Object Oriented javascript models for the client and the server.
+---
 
 ## Add a little oomph to your project 
 
