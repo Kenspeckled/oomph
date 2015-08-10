@@ -5,7 +5,7 @@
 Object Oriented javascript application framework
 
 ## Work In Progress
-This project has changed significantly since conception and is headed towards a new major release that will turn it from a ORM to a full framework. Sit tight, still a lot of work to do!
+This project has changed significantly since conception and is headed towards a new major release that will turn it towards a light-weight framework. Sit tight, still a lot of work to do!
 
 ---
 
@@ -26,7 +26,6 @@ This project aims to provide a Object Oriented Javascript application framework 
 * Full framework file structure implemented
 * Better conceptual framework for "Actions"
 * Tests
-* Models defined once - not duplicated
 * File Generators 
 
 ## Licence
