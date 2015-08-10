@@ -2,7 +2,7 @@
   "name": "oomph",
   "version": "0.0.0",
   "description": "Object Oriented javascript framework",
-  "main": "./lib/index.js",
+  "main": "./lib/oomph.js",
   "scripts": {
     "test": "jasmine",
     "prepublish": "coffee -o lib/ src/"
