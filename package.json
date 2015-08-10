@@ -1,6 +1,6 @@
 {
   "name": "oomph",
-  "version": "0.3.6",
+  "version": "0.0.0",
   "description": "Object Oriented javascript framework",
   "main": "./lib/index.js",
   "scripts": {
@@ -37,7 +37,6 @@
   },
   "dependencies": {
     "lodash": "^3.9.3",
-    "pluralize": "^1.1.2",
     "promise": "^7.0.1"
   }
 }
