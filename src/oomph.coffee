@@ -28,10 +28,12 @@ oomph =
     _class = @adaptor.connectAdaptor(_class) if @adaptor
 
     _class.extend = (_extendableClass) ->
-      Object.keys(_extendableClass).forEach (key) =>
-        _class[key] = _extendableClass[key]
-      Object.keys(_extendableClass.prototype).forEach (key) =>
-        _class.prototype[key] = _extendableClass.prototype[key]
+      if _extendableClass
+        Object.keys(_extendableClass).forEach (key) =>
+          _class[key] = _extendableClass[key]
+        if _extendableClass.prototype
+          Object.keys(_extendableClass.prototype).forEach (key) =>
+            _class.prototype[key] = _extendableClass.prototype[key]
 
     return _class
   
