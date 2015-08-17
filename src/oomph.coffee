@@ -34,6 +34,7 @@ oomph =
         if _extendableClass.prototype
           Object.keys(_extendableClass.prototype).forEach (key) =>
             _class.prototype[key] = _extendableClass.prototype[key]
+      return _class
 
     return _class
   
