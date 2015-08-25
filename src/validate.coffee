@@ -60,6 +60,6 @@ validate = (validationObj, attrName, attrValue) ->
         else
           throw new Error "format validation setting not valid on " + attrName
 
-  Promise.all(validations)
+  validations
 
 module.exports = validate

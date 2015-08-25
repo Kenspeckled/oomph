@@ -77,6 +77,7 @@ This project aims to provide a Object Oriented Javascript application framework 
 * Better conceptual framework for "Actions"
 * Tests
 * File Generators 
+* Handle controller errors better
 
 ## Licence
 
