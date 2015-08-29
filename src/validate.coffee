@@ -41,13 +41,13 @@ validate = (validationObj, attrName, attrValue) ->
       when 'length'
         if validationSetting.hasOwnProperty('is')
           unless attrValue.length == validationSetting.is
-            validations.push new ValidationError attrName + " should have a length of " + validationSetting.is, attribute: attrName, actual: attrValue, expected: validationSetting.is
+            validations.push new ValidationError attrName + " should have a length of " + validationSetting.is, attribute: attrName, actual: attrValue.length, expected: validationSetting.is
         else if validationSetting.hasOwnProperty('minimum')
           unless attrValue.length >= validationSetting.minimum
-            validations.push new ValidationError attrName + " should have a minimum length of " + validationSetting.minimum, attribute: attrName, actual: attrValue, expected: validationSetting.minimum
+            validations.push new ValidationError attrName + " should have a minimum length of " + validationSetting.minimum, attribute: attrName, actual: attrValue.length, expected: validationSetting.minimum
         else if validationSetting.hasOwnProperty('maximum')
           unless attrValue.length <= validationSetting.maximum
-            validations.push new ValidationError attrName + " should have a maximum length of " + validationSetting.maximum, attribute: attrName, actual: attrValue, expected: validationSetting.maximum
+            validations.push new ValidationError attrName + " should have a maximum length of " + validationSetting.maximum, attribute: attrName, actual: attrValue.length, expected: validationSetting.maximum
         else
           throw new Error "length validation setting not valid on " + attrName
       when 'format'
