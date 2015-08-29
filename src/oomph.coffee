@@ -14,7 +14,7 @@ oomph =
     _class = (props) ->
       for property of props
         this[property] = props[property]
-      @initialize.apply this, arguments
+      @initializedVal = @initialize.apply this, arguments
       return
 
     _class.className = name
