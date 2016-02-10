@@ -10,8 +10,8 @@ utilities =
     min = parseInt(((10**(length-1)).toString()),36)
     Math.floor(Math.random()*(max - min)+min).toString(36)
 
-  currency: (symbol, number) ->
-    symbol + parseFloat(Math.round(number * 100) / 100).toFixed(2)
+  currency: (pence) ->
+    "£" + (Math.round(pence)/100).toFixed(2)
 
   isBlank: (string) ->
     string == "" or string == undefined or string == null
