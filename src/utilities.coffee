@@ -5,6 +5,22 @@ Promise = require 'promise'
 
 utilities =
 
+
+  seededShuffle: (array, seed) ->
+    result = []
+    mutatableArray = array.slice() # clone array
+    while (mutatableArray.length > 0)
+      rnd = Math.floor(utilities.seededRandom(seed) * mutatableArray.length)
+      # move a random indexed item to the result array
+      result.push(mutatableArray.splice(rnd, 1)[0])
+    result
+
+  seededRandom: (seed) ->
+    return Math.random() if !seed
+    # From https://github.com/dylang/shortid/blob/master/lib/random/random-from-seed.js
+    generatedNum = (seed * 9301 + 49297) % 233280
+    generatedNum / 233280.0
+
   randomString: (length) ->
     max = parseInt(new Array( length + 1 ).join('z'), 36)
     min = parseInt(((10**(length-1)).toString()),36)
