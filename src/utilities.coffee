@@ -6,7 +6,7 @@ Promise = require 'promise'
 utilities =
 
 
-  seededShuffle: (array, seed) ->
+  weakSeededShuffle: (array, seed) ->
     result = []
     mutatableArray = array.slice() # clone array
     while (mutatableArray.length > 0)
@@ -15,6 +15,13 @@ utilities =
       result.push(mutatableArray.splice(rnd, 1)[0])
     result
 
+  seededShuffle: (array, seed) ->
+    # perform the weak shuffle multiple times with
+    # prime numbers added to the initial seed
+    for i in [101, 103, 107, 109, 113, 127, 131]
+     array = utilities.weakSeededShuffle(array, seed + i)
+    array
+      
   seededRandom: (seed) ->
     return Math.random() if !seed
     # From https://github.com/dylang/shortid/blob/master/lib/random/random-from-seed.js
