@@ -19,13 +19,15 @@ utilities =
     # perform the weak shuffle multiple times with
     # prime numbers added to the initial seed
     for i in [101, 103, 107, 109, 113, 127, 131]
-     array = utilities.weakSeededShuffle(array, seed + i)
+      s = parseInt(seed) + i
+      array = utilities.weakSeededShuffle(array, s)
     array
       
   seededRandom: (seed) ->
-    return Math.random() if !seed
+    s = parseInt(seed)
+    return Math.random() if !s
     # From https://github.com/dylang/shortid/blob/master/lib/random/random-from-seed.js
-    generatedNum = (seed * 9301 + 49297) % 233280
+    generatedNum = (s * 9301 + 49297) % 233280
     generatedNum / 233280.0
 
   randomString: (length) ->
